@@ -25,6 +25,13 @@ As Account ID is difficult to remember, I login as root user to create my accoun
 ### Use CloudShell
 
 ### Generate AWS Credentials
+Navigate to Security Credentials under top right menu.
+![Security Credentials](assets/security-credentials.png)
+
+Click Create Access Key and choose AWS CLI access.
+![Access Key](assets/access-key.png)
+
+Finally, click download .csv file.
 
 ### Install AWS CLI
 
