@@ -16,7 +16,7 @@ I copied the console password and used the console sign-in URL to login as new u
 Once I login with the temporary password, I updated with new password by using auto-generated password from https://passwordsgenerator.net/
 
 
-As Account ID is difficult to remember, I login as root user to create my account alias
+As Account ID is difficult to remember, I login as root user to create my account alias.
 ![IAM Account Alias](assets/iam-account-alias.png)
 
 ![IAM Account Alias Successful](assets/iam-account-alias2.png)
