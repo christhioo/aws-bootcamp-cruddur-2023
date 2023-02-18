@@ -48,6 +48,53 @@ Click Create Access Key and choose AWS CLI access.
 Finally, click download .csv file.
 
 ### Install AWS CLI
+To install AWS CLI on gitpod, I followed the steps found on https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html.
+```
+cd /workspace
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+```
+
+The reason of unzipping on workspace directory is because we don't want to commit it on GitHub.
+To test if the AWS CLI is working on GitPod, we can use command 'aws' like in the screenshot below.
+
+![Gitpod](assets/gitpod-aws-cli.png)
+
+To let gitpod run above commands automatically instead of entering it every time it launches workspace, I added below task into .gitpod.yml config file.
+```
+tasks:
+  - name: aws-cli
+    env:
+      AWS_CLI_AUTO_PROMPT: on-partial
+    init: |
+      cd /workspace
+      curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+      unzip awscliv2.zip
+      sudo ./aws/install
+      cd $THEIA_WORKSPACE_ROOT
+```
+
+Next is setting up the environment variable for *current bash terminal*.
+```
+export AWS_ACCESS_KEY_ID="AKIAXUORKPYQQBKE7M6V"
+export AWS_SECRET_ACCESS_KEY=""
+export AWS_DEFAULT_REGION=us-east-1
+```
+To check whether it's working, I used the following command
+```
+aws sts get-caller-identity
+```
+And the result is as follows.
+
+![AWS Identity](assets/gitpod-aws-identity.png)
+
+To tell Gitpod to remember environment variable without re-inputting every single time.
+```
+gp env AWS_ACCESS_KEY_ID="AKIAXUORKPYQQBKE7M6V"
+gp env AWS_SECRET_ACCESS_KEY=""
+gp env AWS_DEFAULT_REGION=us-east-1
+```
 
 ### Create a Billing Alarm
 
