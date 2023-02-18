@@ -15,7 +15,6 @@ After creating the account, Console sign-in details will be displayed.
 I copied the console password and used the console sign-in URL to login as new user.
 Once I login with the temporary password, I updated with new password by using auto-generated password from https://passwordsgenerator.net/
 
-
 As Account ID is difficult to remember, I login as root user to create my account alias.
 ![IAM Account Alias](assets/iam-account-alias.png)
 
@@ -23,6 +22,20 @@ As Account ID is difficult to remember, I login as root user to create my accoun
 
 
 ### Use CloudShell
+As CloudShell isn't available in Asia Pacific (Singapore) region, I switched to US East (N. Virginia) / us-east-1 to launch CloudShell.
+I couldn't start AWS CloudShell environment as shown in the screenshot below.
+
+![CloudShell Error](assets/aws-cloudshell-error.png)
+
+After searching on the internet, I found one article that best describes my issue.
+https://docs.aws.amazon.com/cloudshell/latest/userguide/troubleshooting.html
+From the article, it might be because I haven't updated my Edge browser.
+Once I updated it to the latest version and cleared browsing data, it works successfully.
+
+In addition, CloudShell will use Bash shell by default. 
+We can change to different shell following the command on https://docs.aws.amazon.com/cloudshell/latest/userguide/working-with-cloudshell.html#using-shells
+
+![CloudShell](assets/aws-cloudshell.png)
 
 ### Generate AWS Credentials
 Navigate to Security Credentials under top right menu.
