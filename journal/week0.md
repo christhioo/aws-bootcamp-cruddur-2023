@@ -121,6 +121,8 @@ Create alarm_config.json file and then run the following command.
 aws cloudwatch put-metric-alarm --cli-input-json file://aws/json/alarm_config.json
 ```
 
+![CloudWatch Alarm](assets/aws-cloudwatch.png)
+
 ### Create a Budget
 I created a budget from AWS Billing so that an email notification will be sent to me once I have exceeded AWS Free Tier.
 The threshold I set is $0.01.
