@@ -13,7 +13,7 @@ After creating the account, Console sign-in details will be displayed.
 ![IAM User Creation](assets/iam-user-creation.png)
 
 I copied the console password and used the console sign-in URL to login as new user.
-Once I login with the temporary password, I updated with new password by using auto-generated password from https://passwordsgenerator.net/
+Once I login with the temporary password, I updated with new password by using auto-generated password from https://passwordsgenerator.net/.
 
 As Account ID is difficult to remember, I login as root user to create my account alias.
 ![IAM Account Alias](assets/iam-account-alias.png)
@@ -81,7 +81,7 @@ export AWS_ACCESS_KEY_ID="AKIAXUORKPYQQBKE7M6V"
 export AWS_SECRET_ACCESS_KEY=""
 export AWS_DEFAULT_REGION=us-east-1
 ```
-To check whether it's working, I used the following command
+To check whether it's working, I used the following command.
 ```
 aws sts get-caller-identity
 ```
@@ -98,12 +98,31 @@ gp env AWS_DEFAULT_REGION=us-east-1
 
 ### Create a Billing Alarm
 
+Amazon CloudWatch uses Amazon SNS to send email. First, create and subscribe to an SNS topic. When you create a CloudWatch alarm, you can add this SNS topic to send an email notification when the alarm changes state.
+
+#### Setting up Amazon SNS notifications
+Reference: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/US_SetupSNS.html
+
+1. Create an SNS Topic
+   ```
+   aws sns create-topic --name myFirstBillingSNS
+   ```
+2. Subscribe email address to SNS Topic
+   ```
+   aws sns subscribe --topic-arn arn:aws:sns:us-east-1:524961873441:myFirstBillingSNS --protocol email --notification-endpoint christhio@duck.com
+   ```
+3. Confirm subscription from email
+
+![Amazon SNS Notification](assets/aws-sns.png)
+
+#### Create Alarm
+Create alarm_config.json file and then run the following command.
+```
+aws cloudwatch put-metric-alarm --cli-input-json file://aws/json/alarm_config.json
+```
+
 ### Create a Budget
 I created a budget from AWS Billing so that an email notification will be sent to me once I have exceeded AWS Free Tier.
 The threshold I set is $0.01.
 
 ![Budget Alarm](assets/Budget-alarm.png)
-
-## Homework Challenges
-
-### Destroy your root account credentials, Set MFA, IAM role
