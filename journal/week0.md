@@ -151,6 +151,7 @@ Assign MFA
 ![Assign MFA](assets/mfa-1.png)
 
 Select MFA Device
+
 ![Select MFA Device](assets/mfa-2.png)
 
 The MFA should be registered in the list.
