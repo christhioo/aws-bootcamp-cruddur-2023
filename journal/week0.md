@@ -133,3 +133,8 @@ The threshold I set is $0.01.
 
 ![Cruddur Logical Architectual Diagram](assets/Cruddur-Logical-Diagram.jpeg)
 Source: https://lucid.app/lucidchart/404a4f0b-7139-48d6-a904-41df001ea359/edit?viewport_loc=-110%2C326%2C2464%2C1470%2C0_0&invitationId=inv_313b302a-820c-4730-8ea5-ba04a3c8edd4
+
+### Recreate Conceptual Diagram in Lucid Charts
+
+![Cruddur Conceptual Diagram](assets/Cruddur-Conceptual-Diagram.jpeg)
+Source: https://lucid.app/lucidchart/1f387e8d-139f-4681-ac11-316aeb914036/edit?viewport_loc=-422%2C-122%2C2464%2C1470%2C0_0&invitationId=inv_a1d31cba-7fe0-41ee-ac0c-dd6f382ad29a
