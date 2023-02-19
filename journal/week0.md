@@ -131,7 +131,7 @@ The threshold I set is $0.01.
 
 ### Recreate Logical Architectual Diagram in Lucid Charts
 
-![Cruddur Logical Architectual Diagram](assets/Cruddur-Logical-Diagram.jpeg)
+![Cruddur Logical Architectual Diagram](assets/Cruddur-Logical-Diagram2.jpeg)
 Source: https://lucid.app/lucidchart/404a4f0b-7139-48d6-a904-41df001ea359/edit?viewport_loc=-110%2C326%2C2464%2C1470%2C0_0&invitationId=inv_313b302a-820c-4730-8ea5-ba04a3c8edd4
 
 ### Recreate Conceptual Diagram in Lucid Charts
