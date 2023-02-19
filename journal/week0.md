@@ -148,10 +148,10 @@ Login as a root user and navigate to Security Credentials under top right  menu.
 ![Security Credentials](assets/security-credentials.png)
 
 Assign MFA
-![Assign MFA](assets/mfa-1.jpg)
+![Assign MFA](assets/mfa-1.png)
 
 Select MFA Device
-![Select MFA Device](assets/mfa-2.jpg)
+![Select MFA Device](assets/mfa-2.png)
 
 The MFA should be registered in the list.
-![MFA List](assets/mfa-3.jpg)
+![MFA List](assets/mfa-3.png)
