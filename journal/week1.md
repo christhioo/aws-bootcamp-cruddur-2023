@@ -59,7 +59,7 @@
     
     To run container in background.
     ```
-    docker container run --rm -p 4567:4567 -d backend-flask
+    docker container run --rm -p 4567:4567 -d backend-flask-image
     ```
 4. Check whether it's working by appending `/api/message_groups`.
    ![Backend Flask GET](assets2/week-1/backend-api-testing.png)
