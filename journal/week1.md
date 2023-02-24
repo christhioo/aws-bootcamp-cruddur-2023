@@ -57,7 +57,7 @@
     unset BACKEND_URL="*"
     ```
     
-    To run container in background
+    To run container in background.
     ```
     docker container run --rm -p 4567:4567 -d backend-flask
     ```
@@ -67,7 +67,7 @@
 #### Containerize Frontend
 
 1. Run NPM Install.
-   We have to run NPM Install before building the container since it needs to copy the contents of node_modules
+   We have to run NPM Install before building the container since it needs to copy the contents of node_modules.
    ```
    cd frontend-react-js
    npm i
@@ -98,3 +98,40 @@
    ![Docker Run](assets2/week-1/docker-frontend-run.png)
 5. Test the page.
    ![Frontend Page](assets2/week-1/frontend-testing.png)
+
+
+#### Running Multiple Containers (Docker Compose)
+
+1. Create `docker-compose.yml` at the root of the project.
+    ```
+    version: "3.8"
+    services:
+      backend-flask:
+        environment:
+          FRONTEND_URL: "https://3000-${GITPOD_WORKSPACE_ID}.${GITPOD_WORKSPACE_CLUSTER_HOST}"
+          BACKEND_URL: "https://4567-${GITPOD_WORKSPACE_ID}.${GITPOD_WORKSPACE_CLUSTER_HOST}"
+        build: ./backend-flask
+        ports:
+          - "4567:4567"
+        volumes:
+          - ./backend-flask:/backend-flask
+      frontend-react-js:
+        environment:
+          REACT_APP_BACKEND_URL: "https://4567-${GITPOD_WORKSPACE_ID}.${GITPOD_WORKSPACE_CLUSTER_HOST}"
+        build: ./frontend-react-js
+        ports:
+          - "3000:3000"
+        volumes:
+          - ./frontend-react-js:/frontend-react-js
+
+    # the name flag is a hack to change the default prepend folder
+    # name when outputting the image names
+    networks: 
+      internal-network:
+        driver: bridge
+        name: cruddur
+    ```
+2. Run `docker compose up` or right-click on `docker-compose.yml` and select 'Compose Up'.
+   ![Docker Compose Up](assets2/week-1/docker-compose-up.png)
+3. Check the page.
+   ![Docker Compose Result Page](assets2/week-1/docker-compose-page.png)
