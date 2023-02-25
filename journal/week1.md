@@ -381,3 +381,49 @@ aws dynamodb scan --table-name Music --query "Items" --endpoint-url http://local
 ![DynamoDB Get Records](assets2/week-1/dynamodb-get-records.png)
 
 ### Run Postgres Container and ensure it works
+
+Copy the following code to `docker-compose.yml` file.
+
+```yml
+services:
+  db:
+    image: postgres:13-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - '5432:5432'
+    volumes: 
+      - db:/var/lib/postgresql/data
+volumes:
+  db:
+    driver: local
+```
+
+Add the following commands into `gitpod.yml` file.
+
+```yml
+  - name: postgres
+    init: |
+      curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc|sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+      echo "deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main" |sudo tee  /etc/apt/sources.list.d/pgdg.list
+      sudo apt update
+      sudo apt install -y postgresql-client-13 libpq-dev
+```
+
+Install PostgreSQL extension into gitpod.io and add into `gitpod.yml` file.
+```yml
+extensions:
+    - cweijan.vscode-postgresql-client2
+```
+
+To test whether it's working by using this command.
+```sh
+psql -Upostgres --host localhost
+
+\dl
+\l
+```
+
+![PostgreSQL Example](assets2/week-1/postgreSQL.png)
