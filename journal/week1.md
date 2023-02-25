@@ -313,3 +313,71 @@ import NotificationsFeedPage from './pages/NotificationsFeedPage';
 
 The result will be as follows.
 ![Notifications Page](assets2/week-1/notifications-page.png)
+
+
+### Run DynamoDB Local Container and ensure it works
+
+Copy the following code to `docker-compose.yml` file.
+
+```yml
+services:
+  dynamodb-local:
+    # https://stackoverflow.com/questions/67533058/persist-local-dynamodb-data-in-volumes-lack-permission-unable-to-open-databa
+    # We needed to add user:root to get this working.
+    user: root
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+    image: "amazon/dynamodb-local:latest"
+    container_name: dynamodb-local
+    ports:
+      - "8000:8000"
+    volumes:
+      - "./docker/dynamodb:/home/dynamodblocal/data"
+    working_dir: /home/dynamodblocal
+```
+
+Run compose up on `docker-compose.yml` file.
+
+To ensure it works, we can copy the commands from https://github.com/100DaysOfCloud/challenge-dynamodb-local.
+
+#### Create a Table
+
+```sh
+aws dynamodb create-table \
+    --endpoint-url http://localhost:8000 \
+    --table-name Music \
+    --attribute-definitions \
+        AttributeName=Artist,AttributeType=S \
+        AttributeName=SongTitle,AttributeType=S \
+    --key-schema AttributeName=Artist,KeyType=HASH AttributeName=SongTitle,KeyType=RANGE \
+    --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 \
+    --table-class STANDARD
+```
+
+#### Create an Item
+
+```sh
+aws dynamodb put-item \
+    --endpoint-url http://localhost:8000 \
+    --table-name Music \
+    --item \
+        '{"Artist": {"S": "No One You Know"}, "SongTitle": {"S": "Call Me Today"}, "AlbumTitle": {"S": "Somewhat Famous"}}' \
+    --return-consumed-capacity TOTAL  
+```
+
+#### List Tables
+
+```sh
+aws dynamodb list-tables --endpoint-url http://localhost:8000
+```
+
+![DynamoDB List Tables](assets2/week-1/dynamodb-list-tables.png)
+
+#### Get Records
+
+```sh
+aws dynamodb scan --table-name Music --query "Items" --endpoint-url http://localhost:8000
+```
+
+![DynamoDB Get Records](assets2/week-1/dynamodb-get-records.png)
+
+### Run Postgres Container and ensure it works
