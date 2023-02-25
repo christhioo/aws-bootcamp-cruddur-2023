@@ -7,7 +7,7 @@
 #### Containerize Backend
 
 1. Create a Dockerfile under `backend-flask/Dockerfile`.
-    ```
+    ```dockerfile
     FROM python:3.10-slim-buster
 
     # Inside Container
@@ -37,14 +37,14 @@
     CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0", "--port=4567"]
     ```
 2. Build container.
-    ```
+    ```sh
     docker build -t  backend-flask-image ./backend-flask
     ```
     ![Docker Build](assets2/week-1/docker-build.png)
     
     ![Docker Image](assets2/week-1/docker-images.png)
 3. Run container.
-    ```
+    ```sh
     export FRONTEND_URL="*"
     export BACKEND_URL="*"
     docker run --rm -p 4567:4567 -it -e FRONTEND_URL='*' -e BACKEND_URL='*' backend-flask-image
@@ -52,28 +52,29 @@
     ![Docker Run](assets2/week-1/docker-run.png)
     
     To unset environment variable.
-    ```
+    ```sh
     unset FRONTEND_URL="*"
     unset BACKEND_URL="*"
     ```
     
     To run container in background.
-    ```
+    ```sh
     docker container run --rm -p 4567:4567 -d backend-flask-image
     ```
 4. Check whether it's working by appending `/api/message_groups`.
+ 
    ![Backend Flask GET](assets2/week-1/backend-api-testing.png)
 
 #### Containerize Frontend
 
 1. Run NPM Install.
    We have to run NPM Install before building the container since it needs to copy the contents of node_modules.
-   ```
+   ```sh
    cd frontend-react-js
    npm i
    ```
 2. Create a Dockerfile under `frontend-react-js/Dockerfile`.
-   ```
+   ```dockerfile
     FROM node:16.18
 
     ENV PORT=3000
@@ -85,14 +86,14 @@
     CMD ["npm", "start"]
    ```
 3. Build Container.
-   ```
+   ```sh
    docker build -t frontend-react-js-image ./frontend-react-js
    ```
    ![Docker Build](assets2/week-1/docker-frontend-build.png)
    
    ![Docker Image](assets2/week-1/docker-frontend-images.png)
 4. Run Container.
-   ```
+   ```sh
    docker run -p 3000:3000 -d frontend-react-js-image
    ```
    ![Docker Run](assets2/week-1/docker-frontend-run.png)
@@ -103,7 +104,8 @@
 #### Running Multiple Containers (Docker Compose)
 
 1. Create `docker-compose.yml` at the root of the project.
-    ```
+
+    ```yaml
     version: "3.8"
     services:
       backend-flask:
@@ -135,3 +137,179 @@
    ![Docker Compose Up](assets2/week-1/docker-compose-up.png)
 3. Check the page.
    ![Docker Compose Result Page](assets2/week-1/docker-compose-page.png)
+
+
+### Document the Notification Endpoint for the OpenAPI Document
+
+To document the notification endpoint, edit `openapi-3.0.yml` file under `backend-flask`.
+```yaml
+/api/activities/notifications:
+    get:
+      description: 'Return a feed of activity for all of those that I follow'
+      tags:
+        - activities
+      parameters: []
+      responses:
+        '200':
+          description: Returns an array of activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Activity'
+```
+
+The result is as follows in the OpenAPI SwaggerUI preview.
+![OpenAPI for Notifications Endpoint](assets2/week-1/openapi-preview.png)
+
+### Write a Flask Backend Endpoint for Notifications
+
+Create a new file `backend-flask/services/notifications_activities.py`.
+
+```py
+from datetime import datetime, timedelta, timezone
+class NotificationsActivities:
+def run():
+    now = datetime.now(timezone.utc).astimezone()
+    results = [{
+      'uuid': '68f126b0-1ceb-4a33-88be-d90fa7109eee',
+      'handle':  'Watsons',
+      'message': 'I have all the best products',
+      'created_at': (now - timedelta(days=2)).isoformat(),
+      'expires_at': (now + timedelta(days=5)).isoformat(),
+      'likes_count': 5,
+      'replies_count': 1,
+      'reposts_count': 0,
+      'replies': [{
+        'uuid': '26e12864-1c26-5c3a-9658-97a10f8fea67',
+        'reply_to_activity_uuid': '68f126b0-1ceb-4a33-88be-d90fa7109eee',
+        'handle':  'Worf',
+        'message': 'This post has no honor!',
+        'likes_count': 0,
+        'replies_count': 0,
+        'reposts_count': 0,
+        'created_at': (now - timedelta(days=2)).isoformat()
+      }],
+    }]
+    return results
+```
+Update `backend-flask/app.py`.
+
+```py
+#Import notifications activities
+from services.notifications_activities import *
+
+@app.route("/api/activities/notifications", methods=['GET'])
+def data_notifications():
+  data = NotificationsActivities.run()
+  return data, 200
+```
+
+
+### Write a React Page for Notifications
+
+Create a new empty file `frontend-react-js/src/pages/NotificationsFeedPage.css`.
+
+Create a new file `frontend-react-js/src/pages/NotificationsFeedPage.js`.
+
+```js
+import './NotificationsFeedPage.css';
+import React from "react";
+
+import DesktopNavigation  from '../components/DesktopNavigation';
+import DesktopSidebar     from '../components/DesktopSidebar';
+import ActivityFeed from '../components/ActivityFeed';
+import ActivityForm from '../components/ActivityForm';
+import ReplyForm from '../components/ReplyForm';
+
+// [TODO] Authenication
+import Cookies from 'js-cookie'
+
+export default function NotificationsFeedPage() {
+  const [activities, setActivities] = React.useState([]);
+  const [popped, setPopped] = React.useState(false);
+  const [poppedReply, setPoppedReply] = React.useState(false);
+  const [replyActivity, setReplyActivity] = React.useState({});
+  const [user, setUser] = React.useState(null);
+  const dataFetchedRef = React.useRef(false);
+
+  const loadData = async () => {
+    try {
+      const backend_url = `${process.env.REACT_APP_BACKEND_URL}/api/activities/notifications`
+      const res = await fetch(backend_url, {
+        method: "GET"
+      });
+      let resJson = await res.json();
+      if (res.status === 200) {
+        setActivities(resJson)
+      } else {
+        console.log(res)
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const checkAuth = async () => {
+    console.log('checkAuth')
+    // [TODO] Authenication
+    if (Cookies.get('user.logged_in')) {
+      setUser({
+        display_name: Cookies.get('user.name'),
+        handle: Cookies.get('user.username')
+      })
+    }
+  };
+
+  React.useEffect(()=>{
+    //prevents double call
+    if (dataFetchedRef.current) return;
+    dataFetchedRef.current = true;
+
+    loadData();
+    checkAuth();
+  }, [])
+
+  return (
+    <article>
+      <DesktopNavigation user={user} active={'notifications'} setPopped={setPopped} />
+      <div className='content'>
+        <ActivityForm  
+          popped={popped}
+          setPopped={setPopped} 
+          setActivities={setActivities} 
+        />
+        <ReplyForm 
+          activity={replyActivity} 
+          popped={poppedReply} 
+          setPopped={setPoppedReply} 
+          setActivities={setActivities} 
+          activities={activities} 
+        />
+        <ActivityFeed 
+          title="Notifications" 
+          setReplyActivity={setReplyActivity} 
+          setPopped={setPoppedReply} 
+          activities={activities} 
+        />
+      </div>
+      <DesktopSidebar user={user} />
+    </article>
+  );
+}
+```
+
+Update `frontend-react-js/src/App.js` file.
+
+```js
+import NotificationsFeedPage from './pages/NotificationsFeedPage';
+
+{
+    path: "/notifications",
+    element: <NotificationsFeedPage />
+}
+```
+
+The result will be as follows.
+![Notifications Page](assets2/week-1/notifications-page.png)
