@@ -472,7 +472,7 @@ psql -Upostgres --host localhost
    ```sh
    docker run --rm -p 4567:4567 -it -e FRONTEND_URL=http://localhost:3000 -e BACKEND_URL=http://localhost:4567 christhio/backend-flask:v0.2
    ```
-   ![localhost backend](assets2/week-1/docker-localhost-backend.png)
+   ![localhost backend](assets2/week-1/docker-localhost-backend2.png)
    
    ```sh
    docker run -p 3000:3000 -e REACT_APP_BACKEND_URL=http://localhost:4567 christhio/frontend-react-js:v0.2
