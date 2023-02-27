@@ -427,3 +427,32 @@ psql -Upostgres --host localhost
 ```
 
 ![PostgreSQL Example](assets2/week-1/postgreSQL.png)
+
+## Homework Challenges
+
+### Tag and push an image to Docker Hub
+
+1. Create an account on Docker Hub.
+2. Go to gitpod.io and start a new workspace.
+3. Run the following command.
+   ```sh
+   docker build -t  backend-flask:latest ./backend-flask
+   ```
+4. Tag the image
+   ```sh
+   docker tag backend-flask:latest christhio/backend-flask:latest
+   ```
+5. Login to Docker Hub from terminal.
+   ```sh
+   docker login
+   ```
+6. Push the image to Docker Hub.
+   ```sh
+   docker push christhio/backend-flask:latest
+   ```
+   
+   ![Docker Push](assets2/week-1/dockerhub-push.png)
+   
+7. Check on Docker Hub.
+   
+   ![dockerhub](assets2/week-1/dockerhub.png)
