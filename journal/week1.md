@@ -456,3 +456,25 @@ psql -Upostgres --host localhost
 7. Check on Docker Hub.
    
    ![dockerhub](assets2/week-1/dockerhub.png)
+
+### Install and Run Docker Locally
+
+1. Install Docker Desktop on Windows. 
+   https://docs.docker.com/desktop/install/windows-install/
+2. Install Windows Subsystem for Linux (WSL) 2 locally.
+   https://learn.microsoft.com/en-us/windows/wsl/install-manual#step-4---download-the-linux-kernel-update-package
+3. Login to Docker Hub on Docker Desktop.
+4. Pull an image from Hub.
+   ![Docker Desktop](assets2/week-1/docker-desktop.png)
+   ![Docker Desktop](assets2/week-1/docker-desktop2.png)
+5. Run the following commands on two cmds (One for backend and another for frontend).
+   
+   ```sh
+   docker run --rm -p 4567:4567 -it -e FRONTEND_URL=http://localhost:3000 -e BACKEND_URL=http://localhost:4567 christhio/backend-flask:v0.2
+   ```
+   ![localhost backend](assets2/week-1/docker-localhost-backend.png)
+   
+   ```sh
+   docker run -p 3000:3000 -e REACT_APP_BACKEND_URL=http://localhost:4567 christhio/frontend-react-js:v0.2
+   ```
+   ![localhost frontend](assets2/week-1/docker-localhost-frontend.png)
