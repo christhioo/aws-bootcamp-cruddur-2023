@@ -27,8 +27,8 @@
    gp env HONEYCOMB_API_KEY=""
    gp env HONEYCOMB_SERVICE_NAME="Cruddur"
    ```
-7. Append the following files to `backend-flask / requirements.txt`. <br />
-   (Reference: https://docs.honeycomb.io/getting-data-in/opentelemetry/python/)
+7. Append the following files to `backend-flask / requirements.txt`.  
+   *(Reference: https://docs.honeycomb.io/getting-data-in/opentelemetry/python/)*
    
    ```sh
    opentelemetry-api 
@@ -100,6 +100,111 @@
     ![Honeycomb Trace Details](assets2/week-2/honeycomb-trace-details.png)
 
 ### Instrument AWS X-Ray
+
+1. Add AWS X-Ray SDK for Python to `requirements.txt`.  
+   *(Reference: https://github.com/aws/aws-xray-sdk-python)*
+   
+   ```txt
+   aws-xray-sdk
+   ```
+2. Install python dependencies.
+
+   ```sh
+   pip install -r requirements.txt
+   ```
+3. Import the library to the `app.py`.
+
+   ```py
+   from aws_xray_sdk.core import xray_recorder
+   from aws_xray_sdk.ext.flask.middleware import XRayMiddleware
+
+   xray_url = os.getenv("AWS_XRAY_URL")
+   xray_recorder.configure(service='Cruddur', dynamic_naming=xray_url)
+   
+   app = Flask(__name__)
+   
+   XRayMiddleware(app, xray_recorder)
+   ```
+4. Add Daemon Service to `docker-compose.yml`.
+
+   ```yml
+   xray-daemon:
+    image: "amazon/aws-xray-daemon"
+    environment:
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_REGION: "us-east-1"
+    command:
+      - "xray -o -b xray-daemon:2000"
+    ports:
+      - 2000:2000/udp
+   ```
+5. Add these two environment variables to backend-flask in `docker-compose.yml` file.
+
+   ```yml
+   AWS_XRAY_URL: "*4567-${GITPOD_WORKSPACE_ID}.${GITPOD_WORKSPACE_CLUSTER_HOST}*"
+   AWS_XRAY_DAEMON_ADDRESS: "xray-daemon:2000"
+   ```
+6. Create a new X-Ray group.
+   
+   ```sh
+   aws xray create-group \
+      --group-name "Cruddur" \
+      --filter-expression "service(\"backend-flask\")"
+   ```
+   
+   ![X-Ray Group](assets2/week-2/x-ray-group.png)
+7. Create a new sampling rule file in `aws/json/xray.json`.
+
+   ```json
+   {
+     "SamplingRule": {
+         "RuleName": "Cruddur",
+         "ResourceARN": "*",
+         "Priority": 9000,
+         "FixedRate": 0.1,
+         "ReservoirSize": 5,
+         "ServiceName": "Cruddur",
+         "ServiceType": "*",
+         "Host": "*",
+         "HTTPMethod": "*",
+         "URLPath": "*",
+         "Version": 1
+     }
+   }
+   ```
+8. Create a new sampling rule for AWS X-Ray traces.
+
+   ```sh
+   aws xray create-sampling-rule --cli-input-json file://aws/json/xray.json
+   ```
+   
+   ![X-Ray Sampling Rule](assets2/week-2/x-ray-sampling-rules.png)
+9. Run docker compose up.
+10. Hit `/api/activities/home`.
+11. The trace should be reflected on AWS X-Ray traces.
+
+    ![X-Ray Traces](assets2/week-2/x-ray-trace.png)
+    
+    ![X-Ray Trace Timeline](assets2/week-2/x-ray-segments-timeline.png)
+12. Add subsegment into `message_groups.py`.
+
+    ```py
+    subsegment = xray_recorder.begin_subsegment('first_mock_subsegment')
+    
+    ...
+    
+    dict = {
+      "now": now.isoformat(),
+      "size": len(model['data'])
+    }
+    subsegment.put_metadata('key', dict, 'namespace')
+    xray_recorder.end_subsegment()
+    ```
+13. Hit `/api/message_groups`.
+14. Check AWS X-Ray traces.
+
+    ![X-Ray Subsegment](assets2/week-2/x-ray-subsegment-metadata.png)  
 
 ### Configure custom logger to send to CloudWatch Logs
 
