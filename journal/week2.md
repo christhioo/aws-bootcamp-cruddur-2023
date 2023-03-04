@@ -348,11 +348,11 @@
 12. Hit `/rollbar/test`.
 13. Check Rollbar's dashboard.
 
-   ![Rollbar Dashboard](assets2/week-2/rollbar-dashboard.png)
+      ![Rollbar Dashboard](assets2/week-2/rollbar-dashboard.png)
 14. Delete return statement in `home_activities.py`.  
 15. Hit `/api/activities/home`.  
 16. Check Rollbar's dashboard.
-    ![Rollbar Error](assets2/week-2/rollbar-error.png)
+     ![Rollbar Error](assets2/week-2/rollbar-error.png)
 17. Error message should be displayed.
-    ![Rollbar Error Details](assets2/week-2/rollbar-error-details.png)
+     ![Rollbar Error Details](assets2/week-2/rollbar-error-details.png)
     
