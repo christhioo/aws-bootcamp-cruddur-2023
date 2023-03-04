@@ -266,14 +266,93 @@
    AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
    AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
    ```
-7. Check CloudWatch's log groups.
+7. Run docker compose up.
+8. Hit `/api/activities/home`.
+9. Check CloudWatch's log groups.
 
    ![CloudWatch Log Groups](assets2/week-2/cloudwatch-log-group.png)
-8. Check CloudWatch's log streams.
+10. Check CloudWatch's log streams.
 
    ![CloudWatch Log Streams](assets2/week-2/cloudwatch-log-streams.png)
-9. Check CloudWatch's log events.
+11. Check CloudWatch's log events.
 
    ![CloudWatch Log Events](assets2/week-2/cloudwatch-log-events.png)
 
 ### Integrate Rollbar and capture and error
+
+1. Create a new Rollbar account.
+2. Create a new project called Cruddur.
+3. Select 'Flask' as the SDK.
+
+   ![Rollbar Select SDK](assets2/week-2/rollbar-select-sdk.png)
+4. Copy access token from code snippet into notepad.
+
+   ![Rollbar Access Token](assets2/week-2/rollbar-access-token.png)
+5. Add blinker and rollbar to `backend-flask/requirements.txt`.
+
+   ```txt
+   blinker
+   rollbar
+   ```
+6. Install python dependencies.
+
+   ```sh
+   pip install -r requirements.txt
+   ```
+7. Set access token from step (4).
+
+   ```sh
+   export ROLLBAR_ACCESS_TOKEN=""
+   gp env ROLLBAR_ACCESS_TOKEN=""
+   ```
+8. Set the following environment variable to backend-flask in `docker-compose.yml` file.
+
+   ```yml
+   ROLLBAR_ACCESS_TOKEN: "${ROLLBAR_ACCESS_TOKEN}"
+   ```
+9. Add the following commands into `app.py`.
+
+   ```py
+   import rollbar
+   import rollbar.contrib.flask
+   from flask import got_request_exception
+   ```
+   
+   ```py
+   rollbar_access_token = os.getenv('ROLLBAR_ACCESS_TOKEN')
+   @app.before_first_request
+   def init_rollbar():
+       """init rollbar module"""
+       rollbar.init(
+           # access token
+           rollbar_access_token,
+           # environment name
+           'production',
+           # server root directory, makes tracebacks prettier
+           root=os.path.dirname(os.path.realpath(__file__)),
+           # flask already sets up logging
+           allow_logging_basic_config=False)
+
+       # send exceptions from `app` to rollbar, using flask's signal system.
+       got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
+   ```
+10. Create a new endpoint to test rollbar in `app.py`.
+    
+    ```py
+    @app.route('/rollbar/test')
+    def rollbar_test():
+       rollbar.report_message('Hello World Christhio!', 'warning')
+       return "Hello World!"
+    ```
+11. Run docker compose up.
+12. Hit `/rollbar/test`.
+13. Check Rollbar's dashboard.
+
+   ![Rollbar Dashboard](assets2/week-2/rollbar-dashboard.png)
+14. Delete return statement in `home_activities.py`.  
+15. Hit `/api/activities/home`.  
+16. Check Rollbar's dashboard.
+    ![Rollbar Error](assets2/week-2/rollbar-error.png)
+17. Error message should be displayed.
+    ![Rollbar Error Details](assets2/week-2/rollbar-error-details.png)
+    
