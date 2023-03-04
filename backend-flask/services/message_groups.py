@@ -9,7 +9,7 @@ class MessageGroups:
     }
 
     # X-Ray -------
-    subsegment = xray_recorder.begin_subsegment('first_mock_subsegment')
+    # subsegment = xray_recorder.begin_subsegment('first_mock_subsegment')
     
     now = datetime.now(timezone.utc).astimezone()
     results = [
@@ -29,11 +29,11 @@ class MessageGroups:
     model['data'] = results
 
     # X-Ray -------
-    dict = {
-      "now": now.isoformat(),
-      "size": len(model['data'])
-    }
-    subsegment.put_metadata('key', dict, 'namespace')
-    xray_recorder.end_subsegment()
+    # dict = {
+    #   "now": now.isoformat(),
+    #   "size": len(model['data'])
+    # }
+    # subsegment.put_metadata('key', dict, 'namespace')
+    # xray_recorder.end_subsegment()
 
     return model
