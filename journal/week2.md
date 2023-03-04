@@ -101,7 +101,7 @@
 
 ### Instrument AWS X-Ray
 
-1. Add AWS X-Ray SDK for Python to `requirements.txt`.  
+1. Add AWS X-Ray SDK for Python to `backend-flask/requirements.txt`.  
    *(Reference: https://github.com/aws/aws-xray-sdk-python)*
    
    ```txt
@@ -207,5 +207,73 @@
     ![X-Ray Subsegment](assets2/week-2/x-ray-subsegment-metadata.png)  
 
 ### Configure custom logger to send to CloudWatch Logs
+
+1. Add Watchtower for Python to `backend-flask/requirements.txt`.  
+   *(Reference: https://pypi.org/project/watchtower/)*
+   
+   ```txt
+   watchtower
+   ```
+2. Install python dependencies.
+
+   ```sh
+   pip install -r requirements.txt
+   ```
+3. Add the following commands into `app.py`.
+
+   ```py
+   import watchtower
+   import logging
+   from time import strftime
+   ```
+   
+   ```py
+   # Configuring Logger to Use CloudWatch
+   LOGGER = logging.getLogger(__name__)
+   LOGGER.setLevel(logging.DEBUG)
+   console_handler = logging.StreamHandler()
+   cw_handler = watchtower.CloudWatchLogHandler(log_group='cruddur')
+   LOGGER.addHandler(console_handler)
+   LOGGER.addHandler(cw_handler)
+   LOGGER.info("test message christhio")
+   ```
+   
+   ```py
+   @app.after_request
+   def after_request(response):
+       timestamp = strftime('[%Y-%b-%d %H:%M]')
+       LOGGER.error('%s %s %s %s %s %s', timestamp, request.remote_addr, request.method, request.scheme, request.full_path, response.status)
+       return response
+   ```
+4. Add the parameter to `/api/activities/home` in `app.py`.
+
+   ```py
+   @app.route("/api/activities/home", methods=['GET'])
+   def data_home():
+     data = HomeActivities.run(logger=LOGGER)
+   ```
+5. Add the parameter `logger` to `home_activities.py`.
+
+   ```py
+   class HomeActivities:
+     def run(logger):
+         logger.info('Hello Cloudwatch! Christhio from /api/activities/home')
+   ```
+6. Set these three environment variables to backend-flask in `docker-compose.yml` file.
+
+   ```yml
+   AWS_DEFAULT_REGION: "${AWS_DEFAULT_REGION}"
+   AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+   AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+   ```
+7. Check CloudWatch's log groups.
+
+   ![CloudWatch Log Groups](assets2/week-2/cloudwatch-log-group.png)
+8. Check CloudWatch's log streams.
+
+   ![CloudWatch Log Streams](assets2/week-2/cloudwatch-log-streams.png)
+9. Check CloudWatch's log events.
+
+   ![CloudWatch Log Events](assets2/week-2/cloudwatch-log-events.png)
 
 ### Integrate Rollbar and capture and error
