@@ -273,10 +273,10 @@
    ![CloudWatch Log Groups](assets2/week-2/cloudwatch-log-group.png)
 10. Check CloudWatch's log streams.
 
-   ![CloudWatch Log Streams](assets2/week-2/cloudwatch-log-streams.png)
+    ![CloudWatch Log Streams](assets2/week-2/cloudwatch-log-streams.png)
 11. Check CloudWatch's log events.
 
-   ![CloudWatch Log Events](assets2/week-2/cloudwatch-log-events.png)
+    ![CloudWatch Log Events](assets2/week-2/cloudwatch-log-events.png)
 
 ### Integrate Rollbar and capture and error
 
