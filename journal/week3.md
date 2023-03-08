@@ -22,7 +22,7 @@
 
    ![Configure sign-up experience (1)](assets2/week-3/cognito-sign-up-experience1.png)
    
-   ![Configure sign-up experience (2)](assets2/week-3/cognito-sign-up-experience2.png)
+   ![Configure sign-up experience (2)](assets2/week-3/cognito-sign-up-experience2-1.png)
 6. For message delivery configuration step, follow the screenshot below.
 
    ![Configure message delivery](assets2/week-3/cognito-message-delivery.png)
