@@ -105,11 +105,15 @@
 
    // check when the page loads if we are authenicated
    React.useEffect(()=>{
+     //prevents double call
+     if (dataFetchedRef.current) return;
+     dataFetchedRef.current = true;
+     
      loadData();
      checkAuth();
    }, [])
    ```
-5. Replace the function of `signout` to the following code in `ProfileInfo.js`.
+5. Replace the function of `signOut` to the following code in `ProfileInfo.js`.
 
    ```js
    import { Auth } from 'aws-amplify';
