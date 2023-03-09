@@ -161,6 +161,23 @@
    ![Create new user](assets2/week-3/cognito-create-user.png)
    
    ![Create new user details](assets2/week-3/cognito-create-user-details.png)
+8. As the user's confirmation status is *Force change password*, and there's no way to change password from the AWS Console, we could use AWS CLI as found on https://stackoverflow.com/questions/40287012/how-to-change-user-status-force-change-password.
+
+   ![User Information](assets2/week-3/cognito-force-change-password.png)
+
+   ```sh
+   aws cognito-idp admin-set-user-password \
+   --user-pool-id us-east-1_nNyvfnegi \
+   --username christhio \
+   --password Testing123! \
+   --permanent
+   ```
+   
+   ![User Information](assets2/week-3/cognito-user-confirmed.png)
+9. Run docker compose up and hit the frontend website.
+10. Sign with above credentials. The handle name and preferred name should be displayed.
+
+   ![User Homepage](assets2/week-3/cognito-sign-in-christhio.png)
 
 ### Implement Custom Signup Page
 
