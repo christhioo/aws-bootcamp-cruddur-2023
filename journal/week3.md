@@ -10,7 +10,7 @@
 2. Create user pool.
 3. For sign-in experience configuration step, follow the screenshot below.
 
-   ![Configure sign-in experience](assets2/week-3/cognito-sign-in-experience.png)
+   ![Configure sign-in experience](assets2/week-3/cognito-sign-in-experience2.png)
 4. For security requirements configuration step, follow the screenshots below.
    For this bootcamp, 8 characters password length is sufficient.
    In addition, we use e-mail as a user account recovery method instead of SMS as we don't want incur extra cost for the bootcamp.
@@ -175,13 +175,101 @@
    
    ![User Information](assets2/week-3/cognito-user-confirmed.png)
 9. Run docker compose up and hit the frontend website.
-10. Sign with above credentials. The handle name and preferred name should be displayed.
+10. Sign in with above credentials. The handle name and preferred name should be displayed.
 
-   ![User Homepage](assets2/week-3/cognito-sign-in-christhio.png)
+    ![User Homepage](assets2/week-3/cognito-sign-in-christhio.png)
 
 ### Implement Custom Signup Page
 
+1. Delete the user created in **Implement Custom Signin Page** section.
+2. Replace `onsubmit` function with the following code in `SignupPage.js`.
+
+   ```js
+   import { Auth } from 'aws-amplify';
+   
+   const [errors, setErrors] = React.useState('');
+   
+   const onsubmit = async (event) => {
+      event.preventDefault();
+      setErrors('')
+      try {
+         const { user } = await Auth.signUp({
+           username: email,
+           password: password,
+           attributes: {
+               name: name,
+               email: email,
+               preferred_username: username,
+           },
+           autoSignIn: { // optional - enables auto sign in after user is confirmed
+               enabled: true,
+           }
+         });
+         console.log(user);
+         window.location.href = `/confirm?email=${email}`
+      } catch (error) {
+         console.log(error);
+         setErrors(error.message)
+      }
+      return false
+   }
+
+   let el_errors;
+   if (errors){
+      el_errors = <div className='errors'>{errors}</div>;
+   }
+   ```
+3. Run docker compose up.
+4. Fill in the sign up details.
+
+   ![Sign Up Page](assets2/week-3/cruddur-sign-up-page.png)
+5. If it's successful, you should be redirected to confirmation page like in the screenshot below.
+
+   ![Confirmation Page](assets2/week-3/cruddur-confirmation-page.png)
+
 ### Implement Custom Confirmation Page
+
+1. Replace `resend_code` and `onsubmit` function with the following code in `ConfirmationPage.js`.
+
+   ```js
+   import { Auth } from 'aws-amplify';
+   
+   const resend_code = async (event) => {
+      setErrors('')
+      try {
+         await Auth.resendSignUp(email);
+         console.log('code resent successfully');
+         setCodeSent(true)
+      } catch (err) {
+         // does not return a code
+         // does cognito always return english
+         // for this to be an okay match?
+         console.log(err)
+         if (err.message == 'Username cannot be empty'){
+           setErrors("You need to provide an email in order to send Resend Activiation Code")   
+         } else if (err.message == "Username/client id combination not found."){
+           setErrors("Email is invalid or cannot be found.")   
+         }
+      }
+   }
+
+   const onsubmit = async (event) => {
+      event.preventDefault();
+      setErrors('')
+      try {
+         await Auth.confirmSignUp(email, code);
+         window.location.href = "/"
+      } catch (error) {
+         setErrors(error.message)
+      }
+      return false
+   }
+   ```
+2. After filling in sign up details, the confirmation form will be shown.
+3. Check email and fill in the confirmation code.
+
+   ![Confirmation Page](assets2/week-3/cruddur-confirmation-page-filled.png)
+4. After successfully confirm the account, you should be redirected to homepage.
 
 ### Implement Custom Recovery Page
 
