@@ -269,7 +269,7 @@
 3. Check email and fill in the confirmation code.
 
    ![Confirmation Page](assets2/week-3/cruddur-confirmation-page-filled.png)
-4. After successfully confirm the account, you should be redirected to homepage.
+4. After successfully confirming the account, you should be redirected to homepage.
 
 ### Implement Custom Recovery Page
 
