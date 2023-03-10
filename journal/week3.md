@@ -273,4 +273,42 @@
 
 ### Implement Custom Recovery Page
 
+1. Replace `onsubmit_send_code` and `onsubmit_confirm_code` function with the following code in `RecoverPage.js`.
+
+   ```js
+   import { Auth } from 'aws-amplify';
+
+   const onsubmit_send_code = async (event) => {
+      event.preventDefault();
+      setErrors('')
+      Auth.forgotPassword(username)
+      .then((data) => setFormState('confirm_code') )
+      .catch((err) => setErrors(err.message) );
+      return false
+   }
+
+   const onsubmit_confirm_code = async (event) => {
+      event.preventDefault();
+      setErrors('')
+      if (password == passwordAgain){
+         Auth.forgotPasswordSubmit(username, code, password)
+         .then((data) => setFormState('success'))
+         .catch((err) => setErrors(err.message) );
+      } else {
+          setErrors('Passwords do not match')
+      }
+      return false
+   }
+   ```
+2. Run docker compose up.
+3. Hit homepage and click Sign In and then Forgot Password?.
+4. Fill in the email address to retrieve the reset password code.
+   
+   ![Recover Password Page](assets2/week-3/cruddur-password-recovery.png)
+   
+   ![Recover Password Page](assets2/week-3/cruddur-password-recovery2.png)
+5. The final result should be "Your password has been successfully reset!".
+
+   ![Recover Password Page](assets2/week-3/cruddur-password-recovery3.png)
+
 ### Watch about different approaches to verifying JWTs
