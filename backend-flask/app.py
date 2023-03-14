@@ -14,7 +14,7 @@ from services.messages import *
 from services.create_message import *
 from services.show_activity import *
 
-from lib.cognito_jwt_token import CognitoJwtToken, extract_access_token, TokenVerifyError
+from middlewares.jwt import JWTMiddleware
 
 # HoneyComb -------------
 from opentelemetry import trace
@@ -74,19 +74,14 @@ frontend = os.getenv('FRONTEND_URL')
 backend = os.getenv('BACKEND_URL')
 origins = [frontend, backend]
 
-cognito_jwt_token = CognitoJwtToken(
-   user_pool_id=os.getenv("AWS_COGNITO_USER_POOL_ID"), 
-   user_pool_client_id=os.getenv("AWS_COGNITO_USER_POOL_CLIENT_ID"),
-   region=os.getenv("AWS_DEFAULT_REGION")
-)
-
 cors = CORS(
-  app, 
+  app,
   resources={r"/api/*": {"origins": origins}},
-  headers=['Content-Type', 'Authorization'], 
+  headers=['Content-Type', 'Authorization'],
   expose_headers='Authorization',
   methods="OPTIONS,GET,HEAD,POST"
 )
+
 
 rollbar_access_token = os.getenv('ROLLBAR_ACCESS_TOKEN')
 @app.before_first_request
@@ -159,21 +154,13 @@ def data_create_message():
   # data = HomeActivities.run()
   # return data, 200
 
+app.wsgi_app = JWTMiddleware(app.wsgi_app)
+jwt_middleware = app.wsgi_app
+
 @app.route("/api/activities/home", methods=['GET'])
 def data_home():
-  access_token = extract_access_token(request.headers)
-  try:
-    claims = cognito_jwt_token.verify(access_token)
-    # authenticated request
-    app.logger.debug("authenticated")
-    app.logger.debug(claims)
-    app.logger.debug(claims['username'])
-    data = HomeActivities.run(cognito_user_id=claims['username'])
-  except TokenVerifyError as e:
-    # unauthenicatied request
-    app.logger.debug(e)
-    app.logger.debug("unauthenticated")
-    data = HomeActivities.run()
+  username = jwt_middleware.cognito_jwt_token.claims['username']
+  data = HomeActivities.run(cognito_user_id=username)
   return data, 200
 
 @app.route("/api/activities/notifications", methods=['GET'])
