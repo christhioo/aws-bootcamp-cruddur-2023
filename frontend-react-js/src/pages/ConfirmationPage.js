@@ -14,6 +14,14 @@ export default function ConfirmationPage() {
 
   const params = useParams();
 
+  React.useEffect(() => {
+    const urlSearchParams = new URLSearchParams(window.location.search);
+    const email = urlSearchParams.get('email');
+    if (email) {
+      setEmail(email);
+    }
+  });
+
   const code_onchange = (event) => {
     setCode(event.target.value);
   }
