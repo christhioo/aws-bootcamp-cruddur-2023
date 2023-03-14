@@ -8,6 +8,9 @@
 - [Implement Custom Recovery Page](#implement-custom-recovery-page)
 - [Verify JWT Token Server Side](#verify-jwt-token-server-side)
 
+[Homework Challenges](#homework-challenges)
+- [Decouple the JWT verify from the application code by writing a Flask Middleware](#decouple-the-jwt-verify-from-the-application-code-by-writing-a-flask-middleware)
+
 ## Required Homework/Tasks
 
 ### Setup Cognito User Pool
@@ -540,3 +543,80 @@
 11. Sign out and the extra message should disappear.
 
     ![Homepage](assets2/week-3/cruddur-homepage.png)
+
+## Homework Challenges
+
+### Decouple the JWT verify from the application code by writing a Flask Middleware
+
+1. This is to decouple the code from [Verify JWT Token Server Side](#verify-jwt-token-server-side).
+2. Create a middleware file under `middlewares/jwt.py`.
+
+   ```py
+   from werkzeug.wrappers import Request
+   from flask import request
+   from lib.cognito_jwt_token import CognitoJwtToken, extract_access_token, TokenVerifyError
+   import os
+
+   class JWTMiddleware:
+      def __init__(self, app):
+         self.app = app
+         self.cognito_jwt_token = CognitoJwtToken(
+            user_pool_id=os.getenv("AWS_COGNITO_USER_POOL_ID"), 
+            user_pool_client_id=os.getenv("AWS_COGNITO_USER_POOL_CLIENT_ID"),
+            region=os.getenv("AWS_DEFAULT_REGION")
+         )
+
+      def __call__(self, environ, start_response):
+         request = Request(environ)
+         try:
+            access_token = extract_access_token(request.headers)			
+            claims = self.cognito_jwt_token.verify(access_token)			
+         except TokenVerifyError:
+            self.cognito_jwt_token.claims = {'username': None}
+
+         return self.app(environ, start_response)
+   ```
+3. Add new line in `requirements.txt` file.
+
+   ```
+   werkzeug
+   ```
+4. Run pip install
+
+   ```
+   pip install -r requirements.txt
+   ```
+5. Add the following codes in `app.py`.
+
+   ```diff
+   - from lib.cognito_jwt_token import CognitoJwtToken, extract_access_token, TokenVerifyError
+   + from middlewares.jwt import JWTMiddleware
+
+   - cognito_jwt_token = CognitoJwtToken(
+   -   user_pool_id=os.getenv("AWS_COGNITO_USER_POOL_ID"), 
+   -   user_pool_client_id=os.getenv("AWS_COGNITO_USER_POOL_CLIENT_ID"),
+   -   region=os.getenv("AWS_DEFAULT_REGION")
+   - )
+
+   + app.wsgi_app = JWTMiddleware(app.wsgi_app)
+   + jwt_middleware = app.wsgi_app
+
+   @app.route("/api/activities/home", methods=['GET'])
+   def data_home():
+   - access_token = extract_access_token(request.headers)
+   - try:
+   -   claims = cognito_jwt_token.verify(access_token)
+   -   data = HomeActivities.run(cognito_user_id=claims['username'])
+   - except TokenVerifyError as e:
+   -   data = HomeActivities.run()
+   + username = jwt_middleware.cognito_jwt_token.claims['username']
+   + data = HomeActivities.run(cognito_user_id=username)
+   return data, 200
+   ```
+6. Run docker compose up and hit the homepage.
+7. Sign in and refresh the page, the extra message should be displayed.
+   
+   ![Homepage](assets2/week-3/cruddur-jwt-token-verify.png)
+8. Sign out and the extra message should disappear.
+
+   ![Homepage](assets2/week-3/cruddur-homepage.png)
