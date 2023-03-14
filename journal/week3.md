@@ -10,6 +10,7 @@
 
 [Homework Challenges](#homework-challenges)
 - [Decouple the JWT verify from the application code by writing a Flask Middleware](#decouple-the-jwt-verify-from-the-application-code-by-writing-a-flask-middleware)
+- [Auto-Populate Email From URL on Confirmation Page](#auto-populate-email-from-url-on-confirmation-page)
 
 ## Required Homework/Tasks
 
@@ -620,3 +621,24 @@
 8. Sign out and the extra message should disappear.
 
    ![Homepage](assets2/week-3/cruddur-homepage.png)
+   
+
+### Auto-Populate Email From URL on Confirmation Page
+
+1. Add the following code to `ConfirmationPage.js`.
+
+   ```js
+   const params = useParams();
+
+   React.useEffect(() => {
+      const urlSearchParams = new URLSearchParams(window.location.search);
+      const email = urlSearchParams.get('email');
+      if (email) {
+         setEmail(email);
+      }
+   });
+
+   ```
+2. Hit the confirmation page `/confirm?email=christhio@duck.com`. The email should be auto-filled in.
+
+   ![Confirmation Page](assets2/week-3/cruddur-confirmation-page2.png)
