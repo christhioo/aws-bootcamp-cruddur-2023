@@ -17,3 +17,6 @@ rollbar
 python-jose
 
 werkzeug
+
+psycopg[binary]
+psycopg[pool]
