@@ -100,11 +100,13 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
    ```sh
    chmod u+x bin/db-connect
    ```
-4. Execute the script.
+4. Execute the script (run from `/backend-flask` directory).
 
    ```sh
    ./bin/db-connect
    ```
+   
+   ![db-connect script](assets2/week-4/db-connect.png)
    
 ### Shell Script to Drop the Database
 
@@ -122,11 +124,13 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
    ```sh
    chmod u+x bin/db-drop
    ```
-3. Execute the script.
+3. Execute the script (run from `/backend-flask` directory).
 
    ```sh
    ./bin/db-drop
    ```
+   
+   ![db-drop script](assets2/week-4/db-drop.png)
 
 ### Shell Script to Create the Database
 
@@ -144,11 +148,13 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
    ```sh
    chmod u+x bin/db-create
    ```
-3. Execute the script.
+3. Execute the script (run from `/backend-flask` directory).
 
    ```sh
    ./bin/db-create
    ```
+   
+   ![db-create script](assets2/week-4/db-create.png)
 
 ### Shell Script to Load the Schema
 
@@ -203,11 +209,13 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
    ```sh
    chmod u+x bin/db-schema-load
    ```
-4. Execute the script.
+4. Execute the script (run from `/backend-flask` directory).
 
    ```sh
    ./bin/db-schema-load
    ```
+   
+   ![db-schema-load script](assets2/week-4/db-schema-load.png)
 
 ### Shell Script to Load the Seed Data
 
@@ -249,11 +257,13 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
    ```sh
    chmod u+x bin/db-seed
    ```
-4. Execute the script.
+4. Execute the script (run from `/backend-flask` directory).
 
    ```sh
    ./bin/db-seed
    ```
+   
+   ![db-seed script](assets2/week-4/db-seed.png)
 
 ### Shell Script to Setup Everything
 
@@ -274,11 +284,13 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
    ```sh
    chmod u+x bin/db-setup
    ```
-3. Execute the script.
+3. Execute the script (run from `/backend-flask` directory).
 
    ```sh
    ./bin/db-setup
    ```
+   
+   ![db-setup script](assets2/week-4/db-setup.png)
 
 ### Make Prints Nicer
 
