@@ -1,6 +1,23 @@
 # Week 4 — Postgres and RDS
 
-## Create RDS Postgres Instance (via CLI)
+[Required Homework/Tasks](#required-homeworktasks)
+- [Create RDS Postgres Instance (via CLI)](#create-rds-postgres-instance-via-cli)
+- [Bash scripting for common database actions](#bash-scripting-for-common-database-actions)
+  - [Shell Script to Connect to DB](#shell-script-to-connect-to-db)
+  - [Shell Script to Drop the Database](#shell-script-to-drop-the-database)
+  - [Shell Script to Create the Database](#shell-script-to-create-the-database)
+  - [Shell Script to Load the Schema](#shell-script-to-load-the-schema)
+  - [Shell Script to Load the Seed Data](#shell-script-to-load-the-seed-data)
+  - [Shell Script to Setup Everything](#shell-script-to-setup-everything)
+  - [Make Prints Nicer](#make-prints-nicer)
+- [Install Postgres Driver in Backend Application](#install-postgres-driver-in-backend-application)
+- [Connect Gitpod to RDS Instance](#connect-gitpod-to-rds-instance)
+- [Create Cognito Trigger to Insert User into Database](#create-cognito-trigger-to-insert-user-into-database)
+- [Create New Activities with a Database Insert](#create-new-activities-with-a-database-insert)
+
+## Required Homework/Tasks
+
+### Create RDS Postgres Instance (via CLI)
 
 1. To create RDS Postgres Instance, we can run the following commands via CLI on gitpod.
 
@@ -61,7 +78,7 @@
 
    ![Postgres Gitpod Terminal](assets2/week-4/rds-aws-gitpod-terminal.png)
 
-## Bash scripting for common database actions
+### Bash Scripting for Common Database Actions
 
 We need to create a new directory to store all the common bash scripts called `bin`.  
 The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
@@ -70,7 +87,7 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
    mkdir /workspace/aws-bootcamp-cruddur-2023/backend-flask/bin
    ```
 
-### Shell Script to Connect to DB
+#### Shell Script to Connect to DB
 
 1. Create a new bash script `bin/db-connect`. 
 
@@ -89,8 +106,8 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
 2. Set the CONNECTION_URL and PROD_CONNECTION_URL environment variable.
 
    ```sh
-   export CONNECTION_URL="postgresql://postgres:pssword@127.0.0.1:5432/cruddur"
-   gp env CONNECTION_URL="postgresql://postgres:pssword@127.0.0.1:5432/cruddur"
+   export CONNECTION_URL="postgresql://postgres:password@127.0.0.1:5432/cruddur"
+   gp env CONNECTION_URL="postgresql://postgres:password@127.0.0.1:5432/cruddur"
    
    export PROD_CONNECTION_URL="postgresql://cruddurroot:password@cruddur-db-instance.cwbipomqhh0x.us-east-1.rds.amazonaws.com:5432/cruddur"
    gp env PROD_CONNECTION_URL="postgresql://cruddurroot:password@cruddur-db-instance.cwbipomqhh0x.us-east-1.rds.amazonaws.com:5432/cruddur"
@@ -108,7 +125,7 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
    
    ![db-connect script](assets2/week-4/db-connect.png)
    
-### Shell Script to Drop the Database
+#### Shell Script to Drop the Database
 
 1. Create a new bash script `bin/db-drop`.
 
@@ -132,7 +149,7 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
    
    ![db-drop script](assets2/week-4/db-drop.png)
 
-### Shell Script to Create the Database
+#### Shell Script to Create the Database
 
 1. Create a new bash script `bin/db-create`.
 
@@ -156,7 +173,7 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
    
    ![db-create script](assets2/week-4/db-create.png)
 
-### Shell Script to Load the Schema
+#### Shell Script to Load the Schema
 
 1. Create a new file called `schema.sql` under `aws-bootcamp-cruddur-2023/backend-flask/db`.
 
@@ -217,7 +234,7 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
    
    ![db-schema-load script](assets2/week-4/db-schema-load.png)
 
-### Shell Script to Load the Seed Data
+#### Shell Script to Load the Seed Data
 
 1. Create a new file called `seed.sql` under `aws-bootcamp-cruddur-2023/backend-flask/db`.
 
@@ -265,7 +282,7 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
    
    ![db-seed script](assets2/week-4/db-seed.png)
 
-### Shell Script to Setup Everything
+#### Shell Script to Setup Everything
 
 1. Create a new bash script `bin/db-setup`.
 
@@ -292,7 +309,7 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
    
    ![db-setup script](assets2/week-4/db-setup.png)
 
-### Make Prints Nicer
+#### Make Prints Nicer
 
 Reference: https://stackoverflow.com/questions/5947742/how-to-change-the-output-color-of-echo-in-linux
 ```sh
@@ -301,3 +318,90 @@ NO_COLOR='\033[0m'
 LABEL="db-schema-load"
 printf "${CYAN}== ${LABEL}${NO_COLOR}\n"
 ```
+
+### Install Postgres Driver in Backend Application
+
+1. Create a new file under `backend-flask/lib/db.py` and add the following code.
+
+   ```py
+   from psycopg_pool import ConnectionPool
+   import os
+
+   def query_wrap_object(template):
+     sql = f"""
+     (SELECT COALESCE(row_to_json(object_row),'{{}}'::json) FROM (
+     {template}
+     ) object_row);
+     """
+     return sql
+
+   def query_wrap_array(template):
+     sql = f"""
+     (SELECT COALESCE(array_to_json(array_agg(row_to_json(array_row))),'[]'::json) FROM (
+     {template}
+     ) array_row);
+     """
+     return sql
+
+   connection_url = os.getenv("CONNECTION_URL")
+   pool = ConnectionPool(connection_url)
+   ```
+2. Add `psycopg` into `requirements.txt`.
+
+   ```sh
+   psycopg[binary]
+   psycopg[pool]
+   ```
+3. Run pip install.
+
+   ```sh
+   pip install -r requirements.txt
+   ```
+4. Set an environment variable in `docker-compose.yml`.
+
+   ```yml
+   backend-flask:
+      environment:
+         CONNECTION_URL: "postgresql://postgres:password@db:5432/cruddur"
+   ```
+5. Replace mock data with real API call in `home_activities.py`.
+
+   ```py
+   from lib.db import pool, query_wrap_array
+
+      sql = query_wrap_array("""
+      SELECT
+        activities.uuid,
+        users.display_name,
+        users.handle,
+        activities.message,
+        activities.replies_count,
+        activities.reposts_count,
+        activities.likes_count,
+        activities.reply_to_activity_uuid,
+        activities.expires_at,
+        activities.created_at
+      FROM public.activities
+      LEFT JOIN public.users ON users.uuid = activities.user_uuid
+      ORDER BY activities.created_at DESC
+      """)
+      print(sql)
+      with pool.connection() as conn:
+        with conn.cursor() as cur:
+          cur.execute(sql)
+          # this will return a tuple
+          # the first field being the data
+          json = cur.fetchone()
+      results = json[0]
+      return results
+   ```
+6. Run docker compose up.
+7. Hit the homepage. It should display the seed data.
+
+   ![Homepage](assets2/week-4/localhost-homepage.png)
+
+### Connect Gitpod to RDS Instance
+
+### Create Cognito Trigger to Insert User into Database
+
+### Create New Activities with a Database Insert
