@@ -402,6 +402,70 @@ printf "${CYAN}== ${LABEL}${NO_COLOR}\n"
 
 ### Connect Gitpod to RDS Instance
 
+1. Run the shell script to connect to DB (run from `/backend-flask` directory).
+
+   ```sh
+   ./bin/db-connect prod
+   ```
+   > This is a continuation of [Create RDS Postgres Instance (via CLI)](#create-rds-postgres-instance-via-cli).
+2. If it's not successful, the issue might be because of inbound security group rules.
+3. Check from Amazon RDS Console the instance's security group rules.
+
+   ![Amazon RDS Console Security Group Rules](assets2/week-4/rds-aws-console-security-group.png)
+4. As per screenshot, current security group rules allow all IP addresses to connect to RDS instance. We want to change it so that only specific IP address can connect to it. Click on the security group link.
+5. Click Edit inbound rules and copy security group ID.
+
+   ![Security Group Rules](assets2/week-4/security-group-inbound-rules-list.png)
+6. Copy the security group rule ID from the row where all IP addresses can connect to this instance (0.0.0.0/0).
+
+   ![Edit Inbound Rules](assets2/week-4/security-group-inbound-rules2.png)
+7. Set the security group ID and security group rule ID environment variable.
+
+   ```sh
+   export DB_SG_ID="sg-0961a06858a56c988"
+   gp env DB_SG_ID="sg-0961a06858a56c988"
+   export DB_SG_RULE_ID="sgr-01b6e226615e3c743"
+   gp env DB_SG_RULE_ID="sgr-01b6e226615e3c743"
+   ```
+8. Gitpod IP address can be obtained from the following command.
+
+   ```sh
+   GITPOD_IP=$(curl ifconfig.me)
+   ```
+9. Add the following commands under postgres in `gitpod.yml` so that every time it launches new workspace, the security group rule will be updated.
+
+   ```yml
+   name: postgres
+   command: |
+     export GITPOD_IP=$(curl ifconfig.me)
+     source "$THEIA_WORKSPACE_ROOT/backend-flask/bin/rds-update-sg-rule"
+   ```
+10. Create a new shell script called `rds-update-sg-rule` under `/backend-flask/bin` to modify inbound IP address on security group rules, as new workspace in Gitpod will produce different IP address.
+
+    ```sh
+    #! /usr/bin/bash
+   
+    aws ec2 modify-security-group-rules \
+      --group-id $DB_SG_ID \
+      --security-group-rules "SecurityGroupRuleId=$DB_SG_RULE_ID,SecurityGroupRule={Description=GITPOD,IpProtocol=tcp,FromPort=5432,ToPort=5432,CidrIpv4=$GITPOD_IP/32}"
+    ```
+11. Make the bash script executable.
+
+     ```sh
+     chmod u+x bin/rds-update-sg-rule
+     ```
+12. Execute the script from `backend-flask` directory.
+
+    ```sh
+    ./bin/rds-update-sg-rule
+    ```
+13. Check the Amazon RDS Console instance's security group rules. It should be updated with the specific address.
+
+    ![Edit Inbound Rules](assets2/week-4/security-group-inbound-rules3.png)
+14. Test the connection by executing the script on step (1).
+
+    ![db-connect aws rds](assets2/week-4/db-connect-aws-rds.png)
+    
 ### Create Cognito Trigger to Insert User into Database
 
 ### Create New Activities with a Database Insert
