@@ -468,4 +468,129 @@ printf "${CYAN}== ${LABEL}${NO_COLOR}\n"
     
 ### Create Cognito Trigger to Insert User into Database
 
+1. Navigate to AWS Lambda console.
+2. Create a new function called `cruddur-post-confirmation`.
+3. Fill in the form like the screenshot below.
+
+   ![Lambda Create Function Form](assets2/week-4/lambda-create-function.png)
+4. Replace the code source with the following code.
+
+   ```py
+   import json
+   import psycopg2
+   import os
+
+   def lambda_handler(event, context):
+       user = event['request']['userAttributes']
+       print('userAttributes')
+       print(user)
+
+       user_display_name  = user['name']
+       user_email         = user['email']
+       user_handle        = user['preferred_username']
+       user_cognito_id    = user['sub']
+       try:
+         print('entered-try')
+         sql = f"""
+            INSERT INTO public.users (
+             display_name, 
+             email,
+             handle, 
+             cognito_user_id
+             ) 
+            VALUES(
+             '{user_display_name}',
+             '{user_email}',
+             '{user_handle}',
+             '{user_cognito_id}'
+            )
+         """
+         print('SQL Statement ----')
+         print(sql)
+         conn = psycopg2.connect(os.getenv('CONNECTION_URL'))
+         cur = conn.cursor()
+         cur.execute(sql)
+         conn.commit() 
+
+       except (Exception, psycopg2.DatabaseError) as error:
+         print(error)
+       finally:
+         if conn is not None:
+             cur.close()
+             conn.close()
+             print('Database connection closed.')
+       return event
+   ```
+5. Click Deploy.
+
+   ![Lambda Code Source](assets2/week-4/lambda-code-source.png)
+6. Add a new environment variable under `Configuration` tab.
+
+   ```
+   Key: CONNECTION_URL
+   Value: postgresql://cruddurroot:PASSWORD@cruddur-db-instance.cwbipomqhh0x.us-east-1.rds.amazonaws.com:5432/cruddur
+   ```
+
+   ![Lambda Environment Variable](assets2/week-4/lambda-env-variable.png)
+7. Add a new layer into the lambda function with the following ARN for postgres driver installation.
+
+   ```
+   arn:aws:lambda:us-east-1:898466741470:layer:psycopg2-py38:2
+   ```
+   
+   ![Lambda Add Layer](assets2/week-4/lambda-add-layer.png)
+8. Connect lambda to the VPC (Virtual Private Cloud) under `Configuration` tab.
+
+   ![Lambda VPC](assets2/week-4/lambda-vpc.png)
+9. Edit the VPC with at least two subnets and default security group.
+
+   ![Lambda Edit VPC](assets2/week-4/lambda-edit-vpc-err.png)
+10. Notice in the screenshot above, there's an error "The provided execution role does not have permissions to call CreateNetworkInterface on EC2".  
+    To solve this issue, we need to attach new policy to the lambda.  
+    Navigate to Permissions under `Execution role` tab.
+    
+    ![Lambda Execution Role](assets2/week-4/lambda-execution-role.png)
+11. Create a new policy under Policies.
+
+    ![IAM Policies](assets2/week-4/iam-policies.png)
+
+    ```json
+    {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeNetworkInterfaces",
+                "ec2:CreateNetworkInterface",
+                "ec2:DeleteNetworkInterface",
+                "ec2:DescribeInstances",
+                "ec2:AttachNetworkInterface"
+            ],
+            "Resource": "*"
+        }]
+    }
+    ```
+
+    ![IAM Create Policy](assets2/week-4/iam-create-policy.png)
+12. Review the policy and create policy.
+
+    ![IAM Review Policy](assets2/week-4/iam-review-policy.png)
+13. Attach the newly created policy into the `cruddur-post-confirmation's role`.
+
+    ![Role's Policies](assets2/week-4/lambda-role-add-permission.png)
+    
+    ![Role's Policies (After)](assets2/week-4/lambda-role-post-add-permission.png)
+14. Add lambda trigger in Cognito for `cruddur-user-pool` under `User pool properties` tab.
+
+    ![Lambda Trigger](assets2/week-4/cognito-lambda-trigger.png)
+
+    ![Add Lambda Trigger](assets2/week-4/cognito-add-lambda-trigger.png)
+15. Test the newly created lambda function by sign up on cruddur.
+16. After filling in confirmation code and confirm email, the lambda function will be triggered and the log can be checked from CloudWatch's Log groups.
+
+    ![Log Events](assets2/week-4/log-events.png)
+17. Connect to AWS DB instance from terminal, and list all values from `public.users` table.
+
+    ![List Users' Table](assets2/week-4/db-search-users.png)
+
 ### Create New Activities with a Database Insert
