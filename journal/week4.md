@@ -2,6 +2,7 @@
 
 [Required Homework/Tasks](#required-homeworktasks)
 - [Create RDS Postgres Instance (via CLI)](#create-rds-postgres-instance-via-cli)
+- [Create Schema for Postgres](#create-schema-for-postgres)
 - [Bash scripting for common database actions](#bash-scripting-for-common-database-actions)
   - [Shell Script to Connect to DB](#shell-script-to-connect-to-db)
   - [Shell Script to Drop the Database](#shell-script-to-drop-the-database)
@@ -77,6 +78,38 @@
 6. You can test the successful connection by running `\l` command.
 
    ![Postgres Gitpod Terminal](assets2/week-4/rds-aws-gitpod-terminal.png)
+
+### Create Schema for Postgres
+
+1. Create a new file called `schema.sql` under `aws-bootcamp-cruddur-2023/backend-flask/db`.
+
+   ```sql
+   CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+   DROP TABLE IF EXISTS public.users;
+   DROP TABLE IF EXISTS public.activities;
+
+
+   CREATE TABLE public.users (
+     uuid UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+     display_name text NOT NULL,
+     handle text NOT NULL,
+     email text NOT NULL,
+     cognito_user_id text NOT NULL,
+     created_at TIMESTAMP default current_timestamp NOT NULL
+   );
+
+   CREATE TABLE public.activities (
+     uuid UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+     user_uuid UUID NOT NULL,
+     message text NOT NULL,
+     replies_count integer DEFAULT 0,
+     reposts_count integer DEFAULT 0,
+     likes_count integer DEFAULT 0,
+     reply_to_activity_uuid integer,
+     expires_at TIMESTAMP,
+     created_at TIMESTAMP default current_timestamp NOT NULL
+   );
+   ```
 
 ### Bash Scripting for Common Database Actions
 
@@ -175,36 +208,7 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
 
 #### Shell Script to Load the Schema
 
-1. Create a new file called `schema.sql` under `aws-bootcamp-cruddur-2023/backend-flask/db`.
-
-   ```sql
-   CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-   DROP TABLE IF EXISTS public.users;
-   DROP TABLE IF EXISTS public.activities;
-
-
-   CREATE TABLE public.users (
-     uuid UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-     display_name text NOT NULL,
-     handle text NOT NULL,
-     email text NOT NULL,
-     cognito_user_id text NOT NULL,
-     created_at TIMESTAMP default current_timestamp NOT NULL
-   );
-
-   CREATE TABLE public.activities (
-     uuid UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-     user_uuid UUID NOT NULL,
-     message text NOT NULL,
-     replies_count integer DEFAULT 0,
-     reposts_count integer DEFAULT 0,
-     likes_count integer DEFAULT 0,
-     reply_to_activity_uuid integer,
-     expires_at TIMESTAMP,
-     created_at TIMESTAMP default current_timestamp NOT NULL
-   );
-   ```
-3. Create a new bash script `bin/db-schema-load`.
+1. Create a new bash script `bin/db-schema-load`.
 
    ```sh
    #! /usr/bin/bash
@@ -221,12 +225,12 @@ The directory will be under `aws-bootcamp-cruddur-2023/backend-flask/`.
 
    psql $URL cruddur < $schema_path
    ```
-3. Make the bash script executable.
+2. Make the bash script executable.
 
    ```sh
    chmod u+x bin/db-schema-load
    ```
-4. Execute the script (run from `/backend-flask` directory).
+3. Execute the script (run from `/backend-flask` directory).
 
    ```sh
    ./bin/db-schema-load
@@ -498,18 +502,19 @@ printf "${CYAN}== ${LABEL}${NO_COLOR}\n"
              handle, 
              cognito_user_id
              ) 
-            VALUES(
-             '{user_display_name}',
-             '{user_email}',
-             '{user_handle}',
-             '{user_cognito_id}'
-            )
+            VALUES(%s,%s,%s,%s)
          """
          print('SQL Statement ----')
          print(sql)
          conn = psycopg2.connect(os.getenv('CONNECTION_URL'))
          cur = conn.cursor()
-         cur.execute(sql)
+         params = [
+            user_display_name,
+            user_email,
+            user_handle,
+            user_cognito_id
+         ]
+         cur.execute(sql, *params)
          conn.commit() 
 
        except (Exception, psycopg2.DatabaseError) as error:
