@@ -599,3 +599,250 @@ printf "${CYAN}== ${LABEL}${NO_COLOR}\n"
     ![List Users' Table](assets2/week-4/db-search-users.png)
 
 ### Create New Activities with a Database Insert
+
+1. Create a new SQL file called `create.sql` under `backend-flask/db/sql/activities` directory.
+
+   ```sql
+   INSERT INTO public.activities (
+      user_uuid,
+      message,
+      expires_at
+   )
+   VALUES (
+      (SELECT uuid 
+        FROM public.users 
+        WHERE users.handle = %(handle)s
+        LIMIT 1
+      ),
+      %(message)s,
+      %(expires_at)s
+   ) RETURNING uuid;
+   ```
+2. Create a new SQL file called `home.sql` under `backend-flask/db/sql/activities`.
+
+   ```sql
+   SELECT
+    activities.uuid,
+    users.display_name,
+    users.handle,
+    activities.message,
+    activities.replies_count,
+    activities.reposts_count,
+    activities.likes_count,
+    activities.reply_to_activity_uuid,
+    activities.expires_at,
+    activities.created_at
+   FROM public.activities
+   LEFT JOIN public.users ON users.uuid = activities.user_uuid
+   ORDER BY activities.created_at DESC
+   ```
+3. Create a new SQL file called `object.sql` under `backend-flask/db/sql/activities`.
+
+   ```sql
+   SELECT
+     activities.uuid,
+     users.display_name,
+     users.handle,
+     activities.message,
+     activities.created_at,
+     activities.expires_at
+   FROM public.activities
+   INNER JOIN public.users 
+   ON users.uuid = activities.user_uuid 
+   WHERE 
+     activities.uuid = %(uuid)s
+   ```
+4. Replace `backend-flask/lib/db.py` file to be the following codes.
+
+   ```py
+    from psycopg_pool import ConnectionPool
+    import os
+    import re
+    import sys
+    from flask import current_app as app
+
+    class Db:
+      def __init__(self):
+        self.init_pool()
+
+      def init_pool(self):
+        connection_url = os.getenv("CONNECTION_URL")
+        self.pool = ConnectionPool(connection_url)
+
+      def template(self,*args):
+        pathing = list((app.root_path,'db','sql',) + args)
+        pathing[-1] = pathing[-1] + ".sql"
+
+        template_path = os.path.join(*pathing)
+
+        green = '\033[92m'
+        no_color = '\033[0m'
+        print("\n")
+        print(f'{green} Load SQL Template: {template_path} {no_color}')
+
+        with open(template_path, 'r') as f:
+          template_content = f.read()
+        return template_content
+
+      def print_params(self,params):
+        blue = '\033[94m'
+        no_color = '\033[0m'
+        print(f'{blue} SQL Params:{no_color}')
+        for key, value in params.items():
+          print(key, ":", value)
+
+      def print_sql(self,title,sql):
+        cyan = '\033[96m'
+        no_color = '\033[0m'
+        print(f'{cyan} SQL STATEMENT-[{title}]------{no_color}')
+        print(sql)
+
+      def query_commit(self,sql,params={}):
+        self.print_sql('commit with returning',sql)
+
+        pattern = r"\bRETURNING\b"
+        is_returning_id = re.search(pattern, sql)
+
+        try:
+          with self.pool.connection() as conn:
+            cur =  conn.cursor()
+            cur.execute(sql,params)
+            if is_returning_id:
+              returning_id = cur.fetchone()[0]
+            conn.commit() 
+            if is_returning_id:
+              return returning_id
+        except Exception as err:
+          self.print_sql_err(err)
+
+      # when we want to return a json object
+      def query_array_json(self,sql,params={}):
+        self.print_sql('array',sql)
+
+        wrapped_sql = self.query_wrap_array(sql)
+        with self.pool.connection() as conn:
+          with conn.cursor() as cur:
+            cur.execute(wrapped_sql,params)
+            json = cur.fetchone()
+            return json[0]
+
+      # When we want to return an array of json objects
+      def query_object_json(self,sql,params={}):
+        self.print_sql('json',sql)
+        self.print_params(params)
+
+        wrapped_sql = self.query_wrap_object(sql)
+        with self.pool.connection() as conn:
+          with conn.cursor() as cur:
+            cur.execute(wrapped_sql,params)
+            json = cur.fetchone()
+            if json == None:
+              "{}"
+            else:
+              return json[0]
+
+      def query_wrap_object(self,template):
+        sql = f"""
+        (SELECT COALESCE(row_to_json(object_row),'{{}}'::json) FROM (
+        {template}
+        ) object_row);
+        """
+        return sql
+
+      def query_wrap_array(self,template):
+        sql = f"""
+        (SELECT COALESCE(array_to_json(array_agg(row_to_json(array_row))),'[]'::json) FROM (
+        {template}
+        ) array_row);
+        """
+        return sql
+
+      def print_sql_err(self,err):
+        # get details about the exception
+        err_type, err_obj, traceback = sys.exc_info()
+
+        # get the line number when exception occured
+        line_num = traceback.tb_lineno
+
+        # print the connect() error
+        print ("\npsycopg ERROR:", err, "on line number:", line_num)
+        print ("psycopg traceback:", traceback, "-- type:", err_type)
+
+    db = Db()
+   ```
+5. Update `backend-flask/services/create_activity.py` file.
+
+   ```py
+   from lib.db import db
+   
+        else:
+      #  model['data'] = {
+      #    'uuid': uuid.uuid4(),
+      #    'display_name': 'Andrew Brown',
+      #    'handle':  user_handle,
+      #    'message': message,
+      #    'created_at': now.isoformat(),
+      #    'expires_at': (now + ttl_offset).isoformat()
+      #  }
+      #return model
+        expires_at = (now + ttl_offset)
+        uuid = CreateActivity.create_activity(user_handle,message,expires_at)
+
+        object_json = CreateActivity.query_object_activity(uuid)
+        model['data'] = object_json
+      return model
+
+    def create_activity(handle, message, expires_at):
+      sql = db.template('activities','create')
+      uuid = db.query_commit(sql,{
+        'handle': handle,
+        'message': message,
+        'expires_at': expires_at
+      })
+      return uuid
+
+    def query_object_activity(uuid):
+      sql = db.template('activities','object')
+      return db.query_object_json(sql,{
+        'uuid': uuid
+      })
+   ```
+6. Replace `backend-flask/services/home_activities.py` to be the following codes.
+
+   ```py
+    from datetime import datetime, timedelta, timezone
+    from opentelemetry import trace
+    from lib.db import db
+
+    tracer = trace.get_tracer("home.activities")
+
+    class HomeActivities:
+      def run(cognito_user_id=None):
+        # logger.info('Hello Cloudwatch! Christhio from /api/activities/home')
+        with tracer.start_as_current_span("home-activities-mock-data"):
+          span = trace.get_current_span()
+          now = datetime.now(timezone.utc).astimezone()
+          span.set_attribute("app.now", now.isoformat())
+
+          sql = db.template('activities','home')      
+          results = db.query_array_json(sql)
+          span.set_attribute("app.result_length", len(results))
+          return results
+   ```
+7. Update the environment variable in `docker-compose.yml`.
+
+   ```yml
+   CONNECTION_URL: "${PROD_CONNECTION_URL}"
+   #CONNECTION_URL: "postgresql://postgres:password@db:5432/cruddur"
+   ```
+8. Update the hard coded value of `user_handle` in `app.py`.
+
+   ```py
+   @app.route("/api/activities", methods=['POST','OPTIONS'])
+   @cross_origin()
+   def data_activities():
+      user_handle = 'christhio'
+   ```
+9. Test the changes by adding new crud post. The newly added post should be reflected immediately.
+
+   ![Cruddur Homepage](assets2/week-4/cruddur-homepage.png)
