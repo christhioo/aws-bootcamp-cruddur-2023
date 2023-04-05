@@ -89,7 +89,7 @@
 
     print(response)
     ```
-2. Make the bash script executable.
+2. Make the python script executable.
 
     ```sh
     chmod u+x bin/ddb/schema-load
@@ -363,6 +363,7 @@
 
    ```sql
    def print_sql(self,title,sql,params={}):
+      print(sql, params)
    
    def query_commit(self,sql,params={}):
       self.print_sql('commit with returning',sql,params)
@@ -384,7 +385,7 @@
         json = cur.fetchone()
         return json[0]
    ```
-4. Make the bash script executable.
+4. Make the python script executable.
 
     ```sh
     chmod u+x bin/ddb/seed
@@ -418,7 +419,7 @@
    for item in items:
      print(item)
    ```
-2. Make the bash script executable.
+2. Make the python script executable.
 
     ```sh
     chmod u+x bin/ddb/scan
@@ -607,7 +608,7 @@
     # print the items returned by the query
     print(json.dumps(response, sort_keys=True, indent=2))
    ```
-5. Make the bash script executable.
+5. Make the python script executable.
 
     ```sh
     chmod u+x bin/ddb/patterns/list-conversations
@@ -620,7 +621,94 @@
     
     ![DynamoDB List Conversations](assets2/week-5/ddb-list-conversations.png)
 ### Implement Update Cognito ID Script for Postgres Database
+1. Create a new script file `bin/db/update_cognito_user_ids` under `backend-flask` directory.
 
+    ```py
+    #!/usr/bin/env python3
+
+    import boto3
+    import os
+    import sys
+
+    print("== db-update-cognito-user-ids")
+
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    parent_path = os.path.abspath(os.path.join(current_path, '..', '..'))
+    sys.path.append(parent_path)
+    from lib.db import db
+
+    def update_users_with_cognito_user_id(handle,sub):
+      sql = """
+        UPDATE public.users
+        SET cognito_user_id = %(sub)s
+        WHERE
+          users.handle = %(handle)s;
+      """
+      db.query_commit(sql,{
+        'handle' : handle,
+        'sub' : sub
+      })
+
+    def get_cognito_user_ids():
+      userpool_id = os.getenv("AWS_COGNITO_USER_POOL_ID")
+      client = boto3.client('cognito-idp')
+      params = {
+        'UserPoolId': userpool_id,
+        'AttributesToGet': [
+            'preferred_username',
+            'sub'
+        ]
+      }
+      response = client.list_users(**params)
+      users = response['Users']
+      dict_users = {}
+      for user in users:
+        attrs = user['Attributes']
+        sub    = next((a for a in attrs if a["Name"] == 'sub'), None)
+        handle = next((a for a in attrs if a["Name"] == 'preferred_username'), None)
+        dict_users[handle['Value']] = sub['Value']
+      return dict_users
+
+
+    users = get_cognito_user_ids()
+
+    for handle, sub in users.items():
+      print('----',handle,sub)
+      update_users_with_cognito_user_id(
+        handle=handle,
+        sub=sub
+      )
+    ```
+2. Make the python script executable.
+
+    ```sh
+    chmod u+x bin/db/update_cognito_user_ids
+    ```
+3. Append the python script into `bin/db/setup`.
+
+    ```sh
+    "$bin_path/db/update_cognito_user_ids"
+    ```
+4. Set the AWS_COGNITO_USER_POOL_ID environment variable.
+
+    ```sh
+    export AWS_COGNITO_USER_POOL_ID="us-east-1_a2tfqcMqC"
+    gp env AWS_COGNITO_USER_POOL_ID="us-east-1_a2tfqcMqC"
+    ```
+5. Update AWS_COGNITO_USER_POOL_ID in `docker-compose.yml`.
+
+    ```yml
+    AWS_COGNITO_USER_POOL_ID: "${AWS_COGNITO_USER_POOL_ID}"
+    ```
+6. Execute the script (run from `/backend-flask` directory).
+
+    ```sh
+    ./bin/db/update_cognito_user_ids
+    ```
+    
+    ![Cognito Update Cognito Id](assets2/week-5/cognito-update-user-ids.png)
+    
+    ![Cognito Update Cognito Id SQL](assets2/week-5/cognito-update-user-ids-sql.png)
 ### Implement (Pattern A) Listing Messages in Message Group into Application
 
 ### Implement (Pattern B) Listing Messages Group into Application
