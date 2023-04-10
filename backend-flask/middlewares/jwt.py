@@ -18,6 +18,6 @@ class JWTMiddleware:
 			access_token = extract_access_token(request.headers)			
 			claims = self.cognito_jwt_token.verify(access_token)			
 		except TokenVerifyError:
-			self.cognito_jwt_token.claims = {'username': None}
+			self.cognito_jwt_token.claims = {'username': None, 'sub': None}
 
 		return self.app(environ, start_response)

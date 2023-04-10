@@ -113,10 +113,13 @@ def rollbar_test():
 #     LOGGER.error('%s %s %s %s %s %s', timestamp, request.remote_addr, request.method, request.scheme, request.full_path, response.status)
 #     return response
 
+app.wsgi_app = JWTMiddleware(app.wsgi_app)
+jwt_middleware = app.wsgi_app
+
 @app.route("/api/message_groups", methods=['GET'])
 def data_message_groups():
-  user_handle  = 'andrewbrown'
-  model = MessageGroups.run(user_handle=user_handle)
+  cognito_user_id = jwt_middleware.cognito_jwt_token.claims['sub']
+  model = MessageGroups.run(cognito_user_id=cognito_user_id)
   if model['errors'] is not None:
     return model['errors'], 422
   else:
@@ -153,9 +156,6 @@ def data_create_message():
   # data = HomeActivities.run(logger=LOGGER)
   # data = HomeActivities.run()
   # return data, 200
-
-app.wsgi_app = JWTMiddleware(app.wsgi_app)
-jwt_middleware = app.wsgi_app
 
 @app.route("/api/activities/home", methods=['GET'])
 def data_home():
