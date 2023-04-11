@@ -138,11 +138,28 @@ def data_messages(message_group_uuid):
 @app.route("/api/messages", methods=['POST','OPTIONS'])
 @cross_origin()
 def data_create_message():
-  user_sender_handle = 'andrewbrown'
-  user_receiver_handle = request.json['user_receiver_handle']
+  user_receiver_handle = request.json.get('handle',None)
+  message_group_uuid = request.json.get('message_group_uuid',None)
   message = request.json['message']
 
-  model = CreateMessage.run(message=message,user_sender_handle=user_sender_handle,user_receiver_handle=user_receiver_handle)
+  cognito_user_id = jwt_middleware.cognito_jwt_token.claims['sub']
+
+  if message_group_uuid == None:
+    model = CreateMessage.run(
+      mode="create",
+      message=message,
+      cognito_user_id=cognito_user_id,
+      user_receiver_handle=user_receiver_handle
+    )
+  else:
+    model = CreateMessage.run(
+      mode="update",
+      message=message,
+      cognito_user_id=cognito_user_id,
+      message_group_uuid=message_group_uuid,
+      user_receiver_handle=user_receiver_handle
+    )
+
   if model['errors'] is not None:
     return model['errors'], 422
   else:
