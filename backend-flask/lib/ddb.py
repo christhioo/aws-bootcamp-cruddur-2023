@@ -54,7 +54,7 @@ class Ddb:
       'TableName': table_name,
       'KeyConditionExpression': 'pk = :pk AND begins_with(sk,:year)',
       'ScanIndexForward': False,
-      'Limit': 50,
+      'Limit': 100,
       'ExpressionAttributeValues': {
         ':year': {'S': year },
         ':pk': {'S': f"MSG#{message_group_uuid}"}
