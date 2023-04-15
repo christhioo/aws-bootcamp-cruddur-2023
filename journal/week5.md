@@ -1101,8 +1101,435 @@
    ![Pattern B](assets2/week-5/pattern-b.png)
 
 ### Implement (Pattern C) Creating a Message for an existing Message Group into Application
+1. Update `app.py` file.
 
+   ```py
+    @app.route("/api/messages", methods=['POST','OPTIONS'])
+    @cross_origin()
+    def data_create_message():
+      user_receiver_handle = request.json.get('handle',None)
+      message_group_uuid = request.json.get('message_group_uuid',None)
+      message = request.json['message']
+
+      cognito_user_id = jwt_middleware.cognito_jwt_token.claims['sub']
+
+      if message_group_uuid == None:
+        model = CreateMessage.run(
+          mode="create",
+          message=message,
+          cognito_user_id=cognito_user_id,
+          user_receiver_handle=user_receiver_handle
+        )
+      else:
+        model = CreateMessage.run(
+          mode="update",
+          message=message,
+          cognito_user_id=cognito_user_id,
+          message_group_uuid=message_group_uuid,
+          user_receiver_handle=user_receiver_handle
+        )
+
+      if model['errors'] is not None:
+        return model['errors'], 422
+      else:
+        return model['data'], 200
+      return
+   ```
+2. Add a new file `create_message_users.sql` under `backend-flask/db/sql/users` directory.
+
+   ```sql
+   SELECT 
+      users.uuid,
+      users.display_name,
+      users.handle,
+      CASE users.cognito_user_id = %(cognito_user_id)s
+      WHEN TRUE THEN
+        'sender'
+      WHEN FALSE THEN
+        'recv'
+      ELSE
+        'other'
+      END as kind
+    FROM public.users
+    WHERE
+      users.cognito_user_id = %(cognito_user_id)s
+      OR 
+      users.handle = %(user_receiver_handle)s
+   ```
+3. Replace `create_message.py` file.
+
+   ```py
+    from datetime import datetime, timedelta, timezone
+
+    from lib.db import db
+    from lib.ddb import Ddb
+
+    class CreateMessage:
+      # mode indicates if we want to create a new message_group or using an existing one
+      def run(mode, message, cognito_user_id, message_group_uuid=None, user_receiver_handle=None):
+        model = {
+          'errors': None,
+          'data': None
+        }
+
+        if (mode == "update"):
+          if message_group_uuid == None or len(message_group_uuid) < 1:
+            model['errors'] = ['message_group_uuid_blank']
+
+
+        if cognito_user_id == None or len(cognito_user_id) < 1:
+          model['errors'] = ['cognito_user_id_blank']
+
+        if (mode == "create"):
+          if user_receiver_handle == None or len(user_receiver_handle) < 1:
+            model['errors'] = ['user_reciever_handle_blank']
+
+        if message == None or len(message) < 1:
+          model['errors'] = ['message_blank'] 
+        elif len(message) > 1024:
+          model['errors'] = ['message_exceed_max_chars'] 
+
+        if model['errors']:
+          # return what we provided
+          model['data'] = {
+            'display_name': 'Andrew Brown',
+            'handle':  user_sender_handle,
+            'message': message
+          }
+        else:
+          sql = db.template('users','create_message_users')
+
+          if user_receiver_handle == None:
+            rev_handle = ''
+          else:
+            rev_handle = user_receiver_handle
+
+          users = db.query_array_json(sql,{
+            'cognito_user_id': cognito_user_id,
+            'user_receiver_handle': rev_handle
+          })
+          print("USERS =-=-=-=-==")
+          print(users)
+
+          my_user    = next((item for item in users if item["kind"] == 'sender'), None)
+          other_user = next((item for item in users if item["kind"] == 'recv')  , None)
+
+          print("USERS=[my-user]==")
+          print(my_user)
+          print("USERS=[other-user]==")
+          print(other_user)
+
+          ddb = Ddb.client()
+
+          if (mode == "update"):
+            data = Ddb.create_message(
+              client=ddb,
+              message_group_uuid=message_group_uuid,
+              message=message,
+              my_user_uuid=my_user['uuid'],
+              my_user_display_name=my_user['display_name'],
+              my_user_handle=my_user['handle']
+            )
+          elif (mode == "create"):
+            data = Ddb.create_message_group(
+              client=ddb,
+              message=message,
+              my_user_uuid=my_user['uuid'],
+              my_user_display_name=my_user['display_name'],
+              my_user_handle=my_user['handle'],
+              other_user_uuid=other_user['uuid'],
+              other_user_display_name=other_user['display_name'],
+              other_user_handle=other_user['handle']
+            )
+          model['data'] = data
+        return model
+   ```
+4. Update `MessageForm.js` file.
+
+   ```js
+    import './MessageForm.css';
+    import React from "react";
+    import process from 'process';
+    import { json, useParams } from 'react-router-dom';
+
+    export default function ActivityForm(props) {
+      const [count, setCount] = React.useState(0);
+      const [message, setMessage] = React.useState('');
+      const params = useParams();
+
+      const classes = []
+      classes.push('count')
+      if (1024-count < 0){
+        classes.push('err')
+      }
+
+      const onsubmit = async (event) => {
+        event.preventDefault();
+        try {
+          const backend_url = `${process.env.REACT_APP_BACKEND_URL}/api/messages`
+          console.log('onsubmit payload', message)
+          let json = { 'message': message }
+          if(params.handle){
+            json.handle = params.handle
+          } else {
+            json.message_group_uuid = params.message_group_uuid
+          }
+
+          const res = await fetch(backend_url, {
+            method: "POST",
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem("access_token")}`,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(json),
+          });
+          let data = await res.json();
+          if (res.status === 200) {
+            console.log('data:',data)
+            if (data.message_group_uuid) {
+              console.log('redirect to message group')
+              window.location.href = `/messages/${data.message_group_uuid}`
+            } else {
+              props.setMessages(current => [...current,data]);
+            }
+          } else {
+            console.log(res)
+          }
+        } catch (err) {
+          console.log(err);
+        }
+      }
+
+      const textarea_onchange = (event) => {
+        setCount(event.target.value.length);
+        setMessage(event.target.value);
+      }
+
+      return (
+        <form 
+          className='message_form'
+          onSubmit={onsubmit}
+        >
+          <textarea
+            type="text"
+            placeholder="send a direct message..."
+            value={message}
+            onChange={textarea_onchange} 
+          />
+          <div className='submit'>
+            <div className={classes.join(' ')}>{1024-count}</div>
+            <button type='submit'>Message</button>
+          </div>
+        </form>
+      );
+    }
+   ```
+5. Update `MessageGroupFeed.js` file.
+
+   ```js
+    import './MessageGroupFeed.css';
+    import MessageGroupItem from './MessageGroupItem';
+    import MessageGroupNewItem from './MessageGroupNewItem';
+
+    export default function MessageGroupFeed(props) {
+      let message_group_new_item;
+      if (props.otherUser) {
+        message_group_new_item = <MessageGroupNewItem user={props.otherUser} />
+      }
+
+      return (
+        <div className='message_group_feed'>
+          <div className='message_group_feed_heading'>
+            <div className='title'>Messages</div>
+          </div>
+          <div className='message_group_feed_collection'>
+            {message_group_new_item}
+            {props.message_groups.map(message_group => {
+                return  <MessageGroupItem key={message_group.uuid} message_group={message_group} />
+            })}
+          </div>
+        </div>
+      );
+    }
+   ```
+6. Create a new file `MessageGroupNewItem.js` under `frontend-react-js/src/components` directory.
+
+   ```js
+    import './MessageGroupItem.css';
+    import { Link } from "react-router-dom";
+
+    export default function MessageGroupNewItem(props) {
+      return (
+
+        <Link className='message_group_item active' to={`/messages/new/`+props.user.handle}>
+          <div className='message_group_avatar'></div>
+          <div className='message_content'>
+            <div classsName='message_group_meta'>
+              <div className='message_group_identity'>
+                <div className='display_name'>{props.user.display_name}</div>
+                <div className="handle">@{props.user.handle}</div>
+              </div>{/* activity_identity */}
+            </div>{/* message_meta */}
+          </div>{/* message_content */}
+        </Link>
+      );
+    }
+   ```
+7. Execute the following scripts (run from /backend-flask directory).
+
+   ```sh
+   ./bin/db/setup
+   ./bin/ddb/schema-load
+   ```
+8. Open cruddur app, sign in, go to messages and add new message.
+
+   ![Pattern C](assets2/week-5/pattern-c.png)
+   
 ### Implement (Pattern D) Creating a Message for a new Message Group into Application
+1. Add a new file `short.sql` under `backend-flask/db/sql/users` directory.
+
+   ```sql
+    SELECT
+      users.uuid,
+      users.handle,
+      users.display_name
+    FROM public.users
+    WHERE 
+      users.handle = %(handle)s
+   ```
+2. Create a new file `users_short.py` under `backend-flask/services` directory.
+
+   ```py
+   from lib.db import db
+
+   class UsersShort:
+     def run(handle):
+       sql = db.template('users','short')
+       results = db.query_object_json(sql,{
+         'handle': handle
+       })
+       return results
+   ```
+3. Update `app.js` file to include `messages/new/:handle` routing.
+
+   ```js
+   import MessageGroupNewPage from './pages/MessageGroupNewPage';
+   
+   {
+       path: "/messages/new/:handle",
+       element: <MessageGroupNewPage />
+   },
+   ```
+4. Create a new file `MessageGroupNewPage.js` under `frontend-react-js/src/pages` directory.
+
+   ```js
+    import './MessageGroupPage.css';
+    import React from "react";
+    import { useParams } from 'react-router-dom';
+
+    import DesktopNavigation  from '../components/DesktopNavigation';
+    import MessageGroupFeed from '../components/MessageGroupFeed';
+    import MessagesFeed from '../components/MessageFeed';
+    import MessagesForm from '../components/MessageForm';
+    import checkAuth from '../lib/CheckAuth';
+
+    export default function MessageGroupPage() {
+      const [otherUser, setOtherUser] = React.useState([]);
+      const [messageGroups, setMessageGroups] = React.useState([]);
+      const [messages, setMessages] = React.useState([]);
+      const [popped, setPopped] = React.useState([]);
+      const [user, setUser] = React.useState(null);
+      const dataFetchedRef = React.useRef(false);
+      const params = useParams();
+
+      const loadUserShortData = async () => {
+        try {
+          const backend_url = `${process.env.REACT_APP_BACKEND_URL}/api/users/@${params.handle}/short`
+          const res = await fetch(backend_url, {
+            method: "GET"
+          });
+          let resJson = await res.json();
+          if (res.status === 200) {
+            console.log('other user:',resJson)
+            setOtherUser(resJson)
+          } else {
+            console.log(res)
+          }
+        } catch (err) {
+          console.log(err);
+        }
+      };  
+
+      const loadMessageGroupsData = async () => {
+        try {
+          const backend_url = `${process.env.REACT_APP_BACKEND_URL}/api/message_groups`
+          const res = await fetch(backend_url, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`
+            },
+            method: "GET"
+          });
+          let resJson = await res.json();
+          if (res.status === 200) {
+            setMessageGroups(resJson)
+          } else {
+            console.log(res)
+          }
+        } catch (err) {
+          console.log(err);
+        }
+      };  
+
+      React.useEffect(()=>{
+        //prevents double call
+        if (dataFetchedRef.current) return;
+        dataFetchedRef.current = true;
+
+        loadMessageGroupsData();
+        loadUserShortData();
+        checkAuth(setUser);
+      }, [])
+      return (
+        <article>
+          <DesktopNavigation user={user} active={'home'} setPopped={setPopped} />
+          <section className='message_groups'>
+            <MessageGroupFeed otherUser={otherUser} message_groups={messageGroups} />
+          </section>
+          <div className='content messages'>
+            <MessagesFeed messages={messages} />
+            <MessagesForm setMessages={setMessages} />
+          </div>
+        </article>
+      );
+    }
+   ```
+5. Update `app.py` file.
+
+   ```py
+   from services.users_short import *
+   
+   @app.route("/api/users/@<string:handle>/short", methods=['GET'])
+   def data_users_short(handle):
+      data = UsersShort.run(handle)
+      return data, 200
+   ```
+6. Add a new row into `INSERT INTO public.users` in `db/seed.sql` file.
+
+   ```sql
+     ('Loren Ipsum', 'loren', 'MOCK')
+   ```
+7. Execute the following scripts (run from /backend-flask directory).
+
+   ```sh
+   ./bin/db/setup
+   ./bin/ddb/schema-load
+   ```
+8. Open cruddur app, sign in, go to messages.
+9. Append `/new/loren` into the url.
+10. Add new message.
+
+   ![Pattern D](assets2/week-5/pattern-d.png)
 
 ### Implement (Pattern E) Updating a Message Group using DynamoDB Streams
 1. Execute the following script (run from /backend-flask directory).
