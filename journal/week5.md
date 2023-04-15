@@ -718,3 +718,135 @@
 ### Implement (Pattern D) Creating a Message for a new Message Group into Application
 
 ### Implement (Pattern E) Updating a Message Group using DynamoDB Streams
+1. Execute the following script (run from /backend-flask directory).
+
+   ```sh
+   ./bin/ddb/schema-load prod
+   ```
+2. Navigate to DynamoDB console and click the newly created table.
+
+   ![DynamoDB Table](assets2/week-5/pattern-e-2.png)
+3. Enable stream on the table with 'new image' attributes included under `Exports and streams` tab.
+
+   ![DynamoDB Stream Details](assets2/week-5/pattern-e-3.png)
+   
+   ![Turn on DynamoDB Stream](assets2/week-5/pattern-e-4.png)
+4. Create a VPC endpoint for DynamoDB service. Follow the configuration in the following screenshots.
+
+   ![Endpoints](assets2/week-5/pattern-e-5.png)
+   
+   ![Create Endpoint (1/2)](assets2/week-5/pattern-e-6.png)
+   
+   ![Create Endpoint (2/2)](assets2/week-5/pattern-e-7.png)
+5. Create a new Lambda function. Refer to the following screenshots and source code.
+
+   ![Create Lambda Function (1/2)](assets2/week-5/pattern-e-8.png)
+   
+   ![Create Lambda Function (2/2)](assets2/week-5/pattern-e-9.png)
+   
+   ```py
+    import json
+    import boto3
+    from boto3.dynamodb.conditions import Key, Attr
+
+    dynamodb = boto3.resource(
+     'dynamodb',
+     region_name='us-east-1',
+     endpoint_url="http://dynamodb.us-east-1.amazonaws.com"
+    )
+
+    def lambda_handler(event, context):
+      print('event-data',event)
+
+      eventName = event['Records'][0]['eventName']
+      if (eventName == 'REMOVE'):
+        print("skip REMOVE event")
+        return
+
+      pk = event['Records'][0]['dynamodb']['Keys']['pk']['S']
+      sk = event['Records'][0]['dynamodb']['Keys']['sk']['S']
+      if pk.startswith('MSG#'):
+        group_uuid = pk.replace("MSG#","")
+        message = event['Records'][0]['dynamodb']['NewImage']['message']['S']
+        print("GRUP ===>",group_uuid,message)
+
+        table_name = 'cruddur-messages'
+        index_name = 'message-group-sk-index'
+        table = dynamodb.Table(table_name)
+        data = table.query(
+          IndexName=index_name,
+          KeyConditionExpression=Key('message_group_uuid').eq(group_uuid)
+        )
+        print("RESP ===>",data['Items'])
+
+        # recreate the message group rows with new SK value
+        for i in data['Items']:
+          delete_item = table.delete_item(Key={'pk': i['pk'], 'sk': i['sk']})
+          print("DELETE ===>",delete_item)
+
+          response = table.put_item(
+            Item={
+              'pk': i['pk'],
+              'sk': sk,
+              'message_group_uuid':i['message_group_uuid'],
+              'message':message,
+              'user_display_name': i['user_display_name'],
+              'user_handle': i['user_handle'],
+              'user_uuid': i['user_uuid']
+            }
+          )
+          print("CREATE ===>",response)
+   ```
+6. Grant the lambda function IAM role permission to read the DynamoDB stream events.
+
+   ![Execution Role](assets2/week-5/pattern-e-11.png)
+   
+   ![Execution Role](assets2/week-5/pattern-e-12.png)
+   
+   ![Create Policy](assets2/week-5/pattern-e-20.png)
+   
+   ![Create Policy](assets2/week-5/pattern-e-21.png)
+   
+   ![Permission Policies](assets2/week-5/pattern-e-22.png)
+   
+   ```
+   AWSLambdaInvocation-DynamoDB
+   ```
+   
+   ```json
+   {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "VisualEditor0",
+                "Effect": "Allow",
+                "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:Query"
+                ],
+                "Resource": [
+                    "arn:aws:dynamodb:us-east-1:524961873441:table/cruddur-messages",
+                    "arn:aws:dynamodb:us-east-1:524961873441:table/cruddur-messages/index/message-group-sk-index"
+                ]
+            }
+        ]
+    }
+   ```
+7. Create trigger for DynamoDB under `Exports and streams` tab.
+
+   ![DynamoDB Stream Details](assets2/week-5/pattern-e-14.png)
+   
+   ![Create a Trigger](assets2/week-5/pattern-e-15.png)
+8. Comment out `AWS_ENDPOINT_URL` in `docker-compose.yml` file.
+
+   ![docker-compose.yml](assets2/week-5/pattern-e-16.png)
+9. Run docker compose up.
+10. Open cruddur app, sign in, and go to messages.
+11. Append `/new/loren` to the url.
+12. Add new message.
+
+    ![Cruddur Messages](assets2/week-5/pattern-e-17.png)
+13. Navigate to CloudWatch's Log events, the action should be reflected in the log.
+
+    ![Log Events](assets2/week-5/pattern-e-23.png)
