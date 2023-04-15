@@ -1529,7 +1529,7 @@
 9. Append `/new/loren` into the url.
 10. Add new message.
 
-   ![Pattern D](assets2/week-5/pattern-d.png)
+    ![Pattern D](assets2/week-5/pattern-d.png)
 
 ### Implement (Pattern E) Updating a Message Group using DynamoDB Streams
 1. Execute the following script (run from /backend-flask directory).
